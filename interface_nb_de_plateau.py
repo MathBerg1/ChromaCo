@@ -2,11 +2,7 @@ import tkinter as tk
 
 class InterfacePlateau:
     def __init__(self, parent):
-        self.window = tk.Toplevel(parent)
-        self.window.title("Éditeur de Texte")
-        self.window.geometry("300x250")
-        tk.Label(self.window, text="Interface B : Éditeur", fg="green").pack(pady=20)
-        # ... reste du code de l'éditeur ...    
+
         def calculer():
             try:
             # 1. Récupérer les valeurs des champs de saisie

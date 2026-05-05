@@ -2,12 +2,7 @@ import tkinter as tk
 
 class InterfaceHauteur:
     def __init__(self, parent):
-        self.window = tk.Toplevel(parent)
-        self.window.title("Calculateur")
-        self.window.geometry("300x200")
-        tk.Label(self.window, text="Interface A : Calculateur", fg="blue").pack(pady=20)
-        # ... reste du code du calculateur ...
-
+        
         def calculer():
             try:
             # 1. Récupérer les valeurs des champs de saisie 
