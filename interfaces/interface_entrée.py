@@ -20,7 +20,7 @@ def ouvrir_graphiques():
 
 # --- Configuration du Menu Principal ---
 root = tk.Tk()
-root.title("Tableau de Bord Principal")
+root.title("Your calculator")
 root.geometry("500x400")
 
 tk.Label(root, text="What do you want to calculate ?", font=("Arial", 16, "bold")).pack(pady=30)
