@@ -1,4 +1,5 @@
 import tkinter as tk
+from fonctions_colonnes import theorical_plates_one
 
 class InterfacePlateau:
     def __init__(self, parent):
@@ -10,7 +11,7 @@ class InterfacePlateau:
                 Largueur_base_pic = float(entree2.get())
         
             # 2. Exécuter le calcul (logique Python pure)
-                resultat = Temps_de_retention_brut + Largueur_base_pic
+                resultat = theorical_plates_one(Temps_de_retention_brut, Largueur_base_pic)
         
             # 3. Afficher le résultat dans l'interface
                 label_resultat.config(text=f"Résultat : {resultat}")

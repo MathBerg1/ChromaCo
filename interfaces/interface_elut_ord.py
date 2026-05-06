@@ -18,7 +18,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import tkinter as tk
 from tkinter import messagebox
 
-from fonctions_colonnes import (
+from interfaces.fonctions_colonnes import (
     load_logp_db,
     load_dipole_db,
     sort_by_logp,
