@@ -37,6 +37,14 @@ btn_b.pack(pady=10)
 # btn_c = tk.Button(root, text="Ouvrir Graphiques", command=ouvrir_graphiques, width=25, height=2)
 # btn_c.pack(pady=10)
 
+from interface_elut_ord import InterfaceElution
+
+def ouvrir_elution():
+    InterfaceElution(root)
+
+btn_c = tk.Button(root, text="Order of elution", command=ouvrir_elution, width=25, height=2, bg="#fff9c4")
+btn_c.pack(pady=10)
+
 tk.Button(root, text="Quitter l'application", command=root.quit, bg="#ffebee").pack(pady=40)
 
 root.mainloop()
