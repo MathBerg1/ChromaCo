@@ -25,7 +25,7 @@ class InterfacePlateau:
     # Création de la fenêtre principale
         fenetre = tk.Tk()
         fenetre.title("Calculateur of the theoretical number of plates")
-        fenetre.geometry("300x250")
+        fenetre.geometry("500x350")
 
     # Éléments de l'interface
         tk.Label(fenetre, text="Brut retention time [min] :").pack(pady=5)
