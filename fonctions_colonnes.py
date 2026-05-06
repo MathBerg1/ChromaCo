@@ -80,7 +80,6 @@ def resolution_between_two_peaks(brut_retention_time_1 : float, brut_retention_t
 
     return resolution
 
-<<<<<<< HEAD
 def calculate_resolution_from_dict(peaks_data : dict[int,list[float,float]], index_n : int) -> float:
     """
     Calculates the resolution (Rs) between two consecutive peaks (n and n+1)
@@ -212,15 +211,7 @@ def calculate_dead_time_kovats(retention_times: dict[int, float]) -> float:
 
     # Return the average of all valid calculated dead times
     return sum(calculated_tm_values) / len(calculated_tm_values)
-alkanes_data = {
-    10: 5.50,  # t_R1
-    11: 7.80,  # t_R2
-    12: 8.40,  # t_R3
-    13: 10.30, # t_R4
-    14: 12.50  # t_R5
-}
-print(calculate_dead_time_kovats(alkanes_data))print(calculate_dead_time_kovats(alkanes_data))
-=======
+
 
 """
 fonctions_colonnes.py
@@ -524,4 +515,3 @@ def sort_by_dipole(molecules, db, column_type):
         return (dipole * (-1 if reverse else 1), mol_len)
 
     return sorted(molecules, key=sort_key)
->>>>>>> 62f6892306053891bff1dc45aca535a8b3cb6ca0
