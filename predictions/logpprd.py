@@ -14,10 +14,10 @@ def logp_rdkit(smiles):
 
 # --- 2) Chargement de data/data.csv ---
 calib = []
-with open("data/data.csv", "r") as f:
+with open("data/logP.csv", "r") as f:
     reader = csv.DictReader(f)
     for row in reader:
-        if row["SMILES"] and row["logS"]:
+        if row["SMILES"] and row["logP"]:
             calib.append((row["SMILES"], float(row["logP"])))
 
 X = np.array([logp_rdkit(smi) for smi, _ in calib])
