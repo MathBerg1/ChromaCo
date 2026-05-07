@@ -366,12 +366,14 @@ def load_dipole_db(path="data/dipole.csv"):
     best = {}
 
     for i, row in enumerate(reader, start=2):
-        mol   = (row.get("Molecule") or "").strip()
-        name  = (row.get("Name")     or "").strip()
-        dip_s = (row.get("Dipole")   or "").strip()
+        mol    = (row.get("Molecule") or "").strip()
+        name   = (row.get("Name")     or "").strip()
+        dip_s  = (row.get("Dipole")   or "").strip()
+        smiles = (row.get("SMILES")   or "").strip()  # optional column
 
-        if not mol:
-            continue  # empty row: skip
+        # Skip empty rows and comment rows (e.g. "μ0 = 1.85498")
+        if not mol or not mol[0].isalpha():
+            continue
 
         if not dip_s:
             dip = 0.0
@@ -385,7 +387,12 @@ def load_dipole_db(path="data/dipole.csv"):
 
         entry = {"molecule": mol, "dipole": dip}
 
-        for key in [mol.lower(), name.lower()]:
+        # Index by formula, name, and SMILES (if present) — all lowercase
+        keys = [mol.lower(), name.lower()]
+        if smiles:
+            keys.append(smiles.lower())
+
+        for key in keys:
             if key and (key not in best or dip > best[key]["dipole"]):
                 best[key] = entry
 
