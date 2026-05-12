@@ -209,7 +209,7 @@ class InterfaceElution:
             messagebox.showerror("Sorting error", str(e), parent=self.win_mol)
             return
 
-        self._show_result(ordered, method="Dipole moment", estimated=estimated)
+        self._show_result(ordered, method="LogP", estimated=estimated)
 
     # ── Step 4b: Dipole calculation ────────────────────────────────────────────
 
