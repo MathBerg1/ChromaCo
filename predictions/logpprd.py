@@ -96,7 +96,6 @@ def compute_regression(logp_csv_path="data/logP.csv"):
 
 # Compute once at import time
 _a, _b = compute_regression()
-print(f"Regression: logP_corrected = {_a:.3f} * logP_RDKit + {_b:.3f}")
 
 
 def logp_correction(smiles):
