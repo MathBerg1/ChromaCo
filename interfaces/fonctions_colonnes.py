@@ -1,3 +1,8 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+
 def theorical_plates_one(brut_retention_time: float, peak_width : float)-> float:
     """
     Calculates the number of theoretical plates (N) for a chromatography column.
@@ -306,26 +311,18 @@ def load_logp_db(path="data/logP.csv"):
 
 def load_dipole_db(path="data/dipole.csv"):
     """
-    Load the dipole moment database from a CSV or TSV file.
-
-    Expected file format (tab or comma separated):
-        Molecule    Name                Dipole
-        H2          Hydrogen diatomic   0.000
-        H2O         Water               1.857
-
-    When a molecule appears more than once, only the row with the
-    highest dipole value is kept.
+    Load the dipole moment database from a CSV file.
+    Indexed by SMILES only. Only SMILES and Dipole columns are required.
 
     Parameters
     ----------
     path : str
-        Path to the CSV/TSV file containing dipole moment data.
+        Path to the CSV file (must contain at least SMILES and Dipole columns).
 
     Returns
     -------
     dict
-        Dictionary indexed by molecular formula (Molecule, lowercase)
-        and by name (Name, lowercase).
+        Dictionary indexed by SMILES (lowercase).
         Each value is a dict {"molecule": str, "dipole": float}.
 
     Raises
@@ -333,9 +330,7 @@ def load_dipole_db(path="data/dipole.csv"):
     FileNotFoundError
         If the file does not exist at the given path.
     ValueError
-        If the file is missing required columns Molecule, Name or Dipole,
-        if a Dipole value cannot be converted to float,
-        or if the database is empty after parsing.
+        If the file is missing required columns or is empty.
     """
     if not os.path.exists(path):
         raise FileNotFoundError(
@@ -352,7 +347,7 @@ def load_dipole_db(path="data/dipole.csv"):
     delimiter  = "\t" if "\t" in lines[0] else ","
     fieldnames = [col.strip() for col in lines[0].split(delimiter)]
 
-    required = {"Molecule", "Name", "Dipole"}
+    required = {"SMILES", "Dipole"}
     missing  = required - set(fieldnames)
     if missing:
         raise ValueError(
@@ -362,17 +357,19 @@ def load_dipole_db(path="data/dipole.csv"):
 
     reader = csv.DictReader(lines[1:], fieldnames=fieldnames, delimiter=delimiter)
 
-    # Keep the highest dipole value per key (formula or name)
     best = {}
 
     for i, row in enumerate(reader, start=2):
-        mol    = (row.get("Molecule") or "").strip()
-        name   = (row.get("Name")     or "").strip()
+        smiles = (row.get("SMILES")   or "").strip()
         dip_s  = (row.get("Dipole")   or "").strip()
-        smiles = (row.get("SMILES")   or "").strip()  # optional column
+        mol    = (row.get("Molecule") or smiles).strip()  # optional, fallback to SMILES
 
-        # Skip empty rows and comment rows (e.g. "μ0 = 1.85498")
-        if not mol or not mol[0].isalpha():
+        # Skip rows without SMILES
+        if not smiles:
+            continue
+
+        # Skip comment rows (e.g. "μ0 = 1.85498")
+        if mol and not mol[0].isalnum():
             continue
 
         if not dip_s:
@@ -387,14 +384,9 @@ def load_dipole_db(path="data/dipole.csv"):
 
         entry = {"molecule": mol, "dipole": dip}
 
-        # Index by formula, name, and SMILES (if present) — all lowercase
-        keys = [mol.lower(), name.lower()]
-        if smiles:
-            keys.append(smiles.lower())
-
-        for key in keys:
-            if key and (key not in best or dip > best[key]["dipole"]):
-                best[key] = entry
+        key = smiles.lower()
+        if key not in best or dip > best[key]["dipole"]:
+            best[key] = entry
 
     if not best:
         raise ValueError(
@@ -522,3 +514,93 @@ def sort_by_dipole(molecules, db, column_type):
         return (dipole * (-1 if reverse else 1), mol_len)
 
     return sorted(molecules, key=sort_key)
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+def plot_standard_addition(concentrations, areas, show_plot=True):
+    """
+    Performs linear regression for the standard addition method.
+    Returns slope, intercept, R², and unknown concentration.
+    If show_plot=True, displays the regression plot.
+    """
+
+    # --- Validation ---
+    if len(concentrations) != len(areas):
+        raise ValueError("Lists must have the same length.")
+    if len(concentrations) < 2:
+        raise ValueError("At least 2 points are required.")
+
+    try:
+        X = np.array(concentrations, dtype=float)
+        Y = np.array(areas, dtype=float)
+    except Exception:
+        raise ValueError("All values must be numeric.")
+
+    # --- Regression ---
+    a, b = np.polyfit(X, Y, 1)
+    if a == 0:
+        raise ValueError("Slope is zero, cannot compute intercept.")
+
+    Y_pred = a * X + b
+
+    ss_res = np.sum((Y - Y_pred)**2)
+    ss_tot = np.sum((Y - np.mean(Y))**2)
+    r2 = 1 - ss_res/ss_tot if ss_tot != 0 else 0
+
+    # Intercept at y = 0
+    C_unknown = -b / a
+
+    # If only calculation is needed
+    if not show_plot:
+        return {
+            "a": a,
+            "b": b,
+            "r2": r2,
+            "C_unknown": C_unknown
+        }
+
+    # --- Plotting ---
+    # Ensure intercept is visible
+    xmin = min(min(X), C_unknown) - abs(C_unknown) * 0.1
+    xmax = max(max(X), C_unknown) + abs(C_unknown) * 0.1
+
+    plt.figure(figsize=(7, 5))
+
+    # Experimental points
+    plt.scatter(X, Y, color="blue", label="Experimental points")
+
+    # Regression line
+    x_line = np.linspace(xmin, xmax, 200)
+    plt.plot(x_line, a * x_line + b, color="blue", linewidth=2, label="Regression line")
+
+    # Intercept line
+    plt.axvline(C_unknown, color="red", linestyle="--",
+                linewidth=2, label=f"Intercept = {C_unknown:.4f}")
+
+    # Equation + R²
+    sign = "+" if b >= 0 else "-"
+    plt.text(0.05, 0.95,
+             f"y = {a:.4f}x {sign} {abs(b):.4f}\nR² = {r2:.4f}",
+             transform=plt.gca().transAxes,
+             fontsize=10, verticalalignment="top",
+             bbox=dict(facecolor="white", alpha=0.7))
+
+    plt.xlabel("Added concentration")
+    plt.ylabel("Peak area")
+    plt.title("Standard Addition Method")
+    plt.grid(True)
+    plt.legend()
+    plt.xlim(xmin, xmax)
+    plt.tight_layout()
+    plt.show()
+
+    return {
+        "a": a,
+        "b": b,
+        "r2": r2,
+        "C_unknown": C_unknown
+    }
+
+

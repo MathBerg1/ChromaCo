@@ -3,6 +3,7 @@ import tkinter as tk
 from interface_hauteur_equivalente import InterfaceHauteur
 from interface_nb_de_plateau import InterfacePlateau
 from interface_resolution_two_peaks import InterfaceResolution
+from interface_standard_addition import InterfaceAjoutsDoses
 # from interface_c import InterfaceGraphique  # Exemple pour un 3ème fichier
 
 def ouvrir_hauteur():
@@ -51,6 +52,20 @@ def ouvrir_elution():
 btn_d = tk.Button(root, text="Order of elution", command=ouvrir_elution, width=30, height=2, bg="#fff9c4")
 btn_d.pack(pady=10)
 
-tk.Button(root, text="Quitter l'application", command=root.quit, bg="#ffebee").pack(pady=40)
+def ouvrir_ajouts_doses():
+    InterfaceAjoutsDoses(root)
+
+btn_ajouts = tk.Button(
+    root,
+    text="Standard addition method",
+    command=ouvrir_ajouts_doses,
+    width=30,
+    height=2,
+    bg="#ffdec4"
+)
+btn_ajouts.pack(pady=10)
+
+
+tk.Button(root, text="Exit the application", command=root.quit, bg="#ffebee").pack(pady=40)
 
 root.mainloop()
