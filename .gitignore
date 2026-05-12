@@ -17,3 +17,8 @@ ipython_config.py
 .DS_Store
 .AppleDouble
 .LSOverride
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
