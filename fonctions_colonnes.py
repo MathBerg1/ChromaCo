@@ -79,3 +79,452 @@ def resolution_between_two_peaks(brut_retention_time_1 : float, brut_retention_t
     resolution = (brut_retention_time_2-brut_retention_time_1)/(0.5*(peak_width_1+peak_width_2))
 
     return resolution
+<<<<<<< Updated upstream
+=======
+
+<<<<<<< HEAD
+def calculate_resolution_from_dict(peaks_data : dict[int,list[float,float]], index_n : int) -> float:
+    """
+    Calculates the resolution (Rs) between two consecutive peaks (n and n+1)
+    based on a dictionary of chromatographic data.
+    
+    Parameters:
+    peaks_data (dict): A dictionary where:
+                       - Keys are integers representing the peak index (1 to N).
+                       - Values are lists [retention_time, peak_width].
+    index_n (int): The index of the first peak (n) to compare with the next one (n+1).
+    
+    Returns:
+    float: The resolution value (Rs) between peak n and peak n+1.
+    
+    Raises:
+    ValueError: If the index is invalid, data is missing, or dimensions are incorrect.
+    KeyError: If the specified index or the next index does not exist in the dictionary.
+    """
+    
+    # 1. Validate that index_n exists
+    if index_n not in peaks_data:
+        raise KeyError(f"Index {index_n} not found in the dictionary.")
+    
+    # 2. Validate that the next peak (n+1) exists
+    next_index = index_n + 1
+    if next_index not in peaks_data:
+        raise KeyError(f"Next peak index ({next_index}) not found. Cannot calculate resolution for the last peak.")
+    
+    # 3. Extract data for peak 1 (n)
+    data_1 = peaks_data[index_n]
+    if not isinstance(data_1, list) or len(data_1) != 2:
+        raise ValueError(f"Data for peak {index_n} must be a list of two elements [t_R, w].")
+    t_r1, w1 = data_1
+    
+    # 4. Extract data for peak 2 (n+1)
+    data_2 = peaks_data[next_index]
+    if not isinstance(data_2, list) or len(data_2) != 2:
+        raise ValueError(f"Data for peak {next_index} must be a list of two elements [t_R, w].")
+    t_r2, w2 = data_2
+    
+    # 5. Validate numerical constraints
+    if w1 <= 0 or w2 <= 0:
+        raise ValueError("Peak widths must be strictly positive numbers.")
+    if t_r1 <= 0 or t_r2 <= 0:
+        raise ValueError("Retention time must be strictly possitive number.")
+    if t_r2 < t_r1:
+        # In chromatography, peak n+1 should elute after peak n.
+        raise ValueError("The first peak sould elute before the second.")
+
+    # 6. Calculate Resolution
+    # Formula: Rs = 2 * (t_R2 - t_R1) / (w1 + w2)
+    delta_tr = t_r2 - t_r1
+    sum_widths = w1 + w2
+    
+    resolution = (2 * delta_tr) / sum_widths
+    
+    return resolution
+
+def calculate_dead_time_kovats(retention_times: dict[int, float]) -> float:
+    """
+    Calculates the dead time (t_M) of a chromatographic column using the Kovats method.
+    
+    This method uses the retention times of three consecutive n-alkanes to solve for t_M.
+    It iterates through all possible consecutive triplets in the provided dictionary,
+    calculates a t_M for each triplet, and returns the average of these values.
+    
+    Formula used for a triplet (t1, t2, t3):
+    t_M = (t2^2 - t1 * t3) / (2 * t2 - (t1 + t3))
+    
+    Parameters:
+    retention_times (dict[int, float]): A dictionary where:
+                                        - Keys are integers representing the carbon number or index (1 to N).
+                                        - Values are the gross retention times (t_R) of the n-alkanes.
+                                        Keys must be consecutive integers for the triplets to be valid.
+    
+    Returns:
+    float: The average calculated dead time (t_M).
+    
+    Raises:
+    ValueError: If fewer than 3 data points are provided, or if no valid t_M can be calculated
+                (e.g., denominator is zero in all cases).
+    """
+    if len(retention_times) < 3:
+        raise ValueError("At least 3 retention times are required to calculate dead time using Kovats method.")
+
+    # Sort keys to ensure we process them in order (1, 2, 3, ...)
+    sorted_indices = sorted(retention_times.keys())
+    
+    calculated_tm_values = []
+
+    # Iterate through the sorted keys to form triplets (i, i+1, i+2)
+    # We stop at len - 2 because we need a group of 3
+    for i in range(len(sorted_indices) - 2):
+        idx1 = sorted_indices[i]
+        idx2 = sorted_indices[i+1]
+        idx3 = sorted_indices[i+2]
+
+        # Check if keys are actually consecutive integers (e.g., 1, 2, 3 or 5, 6, 7)
+        # If the user provides {1:..., 3:..., 4:...}, the triplet (1,3,4) is not valid for Kovats
+        if not (idx2 == idx1 + 1 and idx3 == idx2 + 1):
+            continue
+
+        t1 = retention_times[idx1]
+        t2 = retention_times[idx2]
+        t3 = retention_times[idx3]
+
+        # Validate retention times order (t3 > t2 > t1)
+        if not (t3 > t2 > t1):
+            raise ValueError("The retention times should be in order")
+
+        # Calculate denominator: 2*t2 - (t1 + t3)
+        denominator = 2 * t2 - (t1 + t3)
+
+        # Avoid division by zero (which happens if t2 is exactly the arithmetic mean of t1 and t3)
+        if denominator == 0:
+            continue
+
+        # Calculate t_M for this triplet
+        # Formula: (t2^2 - t1*t3) / (2*t2 - t1 - t3)
+        numerator = (t2 ** 2) - (t1 * t3)
+        tm_triplet = numerator / denominator
+
+        # Physical check: Dead time must be positive and less than the first retention time
+        if 0 < tm_triplet < t1:
+            calculated_tm_values.append(tm_triplet)
+
+    if not calculated_tm_values:
+        raise ValueError("Could not calculate any valid dead time. Check data consistency (consecutive indices, increasing times).")
+
+    # Return the average of all valid calculated dead times
+    return sum(calculated_tm_values) / len(calculated_tm_values)
+alkanes_data = {
+    10: 5.50,  # t_R1
+    11: 7.80,  # t_R2
+    12: 8.40,  # t_R3
+    13: 10.30, # t_R4
+    14: 12.50  # t_R5
+}
+print(calculate_dead_time_kovats(alkanes_data))
+=======
+
+"""
+fonctions_colonnes.py
+---------------------
+Functions for loading molecule databases and sorting molecules
+by LogP or dipole moment to determine elution order.
+"""
+
+import csv
+import os
+
+
+# ── Database loading ───────────────────────────────────────────────────────────
+
+def load_logp_db(path="data/logP.csv"):
+    """
+    Load the LogP database from a CSV file.
+
+    Expected file format:
+        CAS,SMILES,logP
+        60-34-4,CNN,1.34
+        64-19-7,CC(O)=O,1.22
+
+    Parameters
+    ----------
+    path : str
+        Path to the CSV file containing LogP data.
+
+    Returns
+    -------
+    dict
+        Dictionary indexed by CAS (lowercase) and SMILES (lowercase).
+        Each value is a dict {"smiles": str, "logp": float}.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file does not exist at the given path.
+    ValueError
+        If the file is missing required columns CAS, SMILES or logP,
+        if a logP value cannot be converted to float,
+        or if the database is empty after parsing.
+    """
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            f"LogP database not found: '{path}'\n"
+            f"Make sure the file exists in the 'data/' folder."
+        )
+
+    db = {}
+    with open(path, "r", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f)
+        fieldnames = [col.strip() for col in (reader.fieldnames or [])]
+
+        required = {"CAS", "SMILES", "logP"}
+        missing = required - set(fieldnames)
+        if missing:
+            raise ValueError(
+                f"Missing columns in '{path}': {missing}\n"
+                f"Columns found: {fieldnames}"
+            )
+
+        for i, row in enumerate(reader, start=2):
+            cas    = (row.get("CAS")    or "").strip()
+            smiles = (row.get("SMILES") or "").strip()
+            logp_s = (row.get("logP")   or "").strip()
+
+            if not logp_s:
+                continue  # row without logP value: skip
+
+            try:
+                logp = float(logp_s)
+            except ValueError:
+                raise ValueError(
+                    f"Invalid logP value at line {i} of '{path}': '{logp_s}'"
+                )
+
+            entry = {"smiles": smiles, "logp": logp}
+
+            if cas:
+                db[cas.lower()] = entry
+            if smiles:
+                db[smiles.lower()] = entry
+
+    if not db:
+        raise ValueError(
+            f"The LogP database '{path}' is empty or contains no valid entries."
+        )
+
+    return db
+
+
+def load_dipole_db(path="data/dipole.csv"):
+    """
+    Load the dipole moment database from a CSV or TSV file.
+
+    Expected file format (tab or comma separated):
+        Molecule    Name                Dipole
+        H2          Hydrogen diatomic   0.000
+        H2O         Water               1.857
+
+    When a molecule appears more than once, only the row with the
+    highest dipole value is kept.
+
+    Parameters
+    ----------
+    path : str
+        Path to the CSV/TSV file containing dipole moment data.
+
+    Returns
+    -------
+    dict
+        Dictionary indexed by molecular formula (Molecule, lowercase)
+        and by name (Name, lowercase).
+        Each value is a dict {"molecule": str, "dipole": float}.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file does not exist at the given path.
+    ValueError
+        If the file is missing required columns Molecule, Name or Dipole,
+        if a Dipole value cannot be converted to float,
+        or if the database is empty after parsing.
+    """
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            f"Dipole database not found: '{path}'\n"
+            f"Make sure the file exists in the 'data/' folder."
+        )
+
+    with open(path, "r", encoding="utf-8-sig") as f:
+        lines = f.readlines()
+
+    if not lines:
+        raise ValueError(f"The file '{path}' is empty.")
+
+    delimiter  = "\t" if "\t" in lines[0] else ","
+    fieldnames = [col.strip() for col in lines[0].split(delimiter)]
+
+    required = {"Molecule", "Name", "Dipole"}
+    missing  = required - set(fieldnames)
+    if missing:
+        raise ValueError(
+            f"Missing columns in '{path}': {missing}\n"
+            f"Columns found: {fieldnames}"
+        )
+
+    reader = csv.DictReader(lines[1:], fieldnames=fieldnames, delimiter=delimiter)
+
+    # Keep the highest dipole value per key (formula or name)
+    best = {}
+
+    for i, row in enumerate(reader, start=2):
+        mol   = (row.get("Molecule") or "").strip()
+        name  = (row.get("Name")     or "").strip()
+        dip_s = (row.get("Dipole")   or "").strip()
+
+        if not mol:
+            continue  # empty row: skip
+
+        if not dip_s:
+            dip = 0.0
+        else:
+            try:
+                dip = float(dip_s)
+            except ValueError:
+                raise ValueError(
+                    f"Invalid Dipole value at line {i} of '{path}': '{dip_s}'"
+                )
+
+        entry = {"molecule": mol, "dipole": dip}
+
+        for key in [mol.lower(), name.lower()]:
+            if key and (key not in best or dip > best[key]["dipole"]):
+                best[key] = entry
+
+    if not best:
+        raise ValueError(
+            f"The dipole database '{path}' is empty or contains no valid entries."
+        )
+
+    return best
+
+
+# ── Sorting functions ──────────────────────────────────────────────────────────
+
+def sort_by_logp(molecules, db, column_type):
+    """
+    Sort a list of molecules by LogP according to the column type.
+
+    Sorting rules:
+      - Apolar column : ascending LogP  (least polar elutes first)
+      - Polar column  : descending LogP (most polar elutes first)
+      - Tie-break     : shorter SMILES string comes first
+
+    Parameters
+    ----------
+    molecules : list[str]
+        List of molecule identifiers (CAS or SMILES) entered by the user.
+    db : dict
+        Database returned by load_logp_db().
+    column_type : str
+        Column type: "apolar" or "polar".
+
+    Returns
+    -------
+    list[str]
+        List of molecule identifiers sorted in elution order (first to last).
+
+    Raises
+    ------
+    ValueError
+        If column_type is neither "apolar" nor "polar".
+        If the molecule list is empty.
+        If one or more molecules are not found in the database.
+    """
+    if not molecules:
+        raise ValueError("The molecule list is empty.")
+
+    if column_type not in ("apolar", "polar"):
+        raise ValueError(
+            f"Invalid column type: '{column_type}'. "
+            f"Accepted values: 'apolar' or 'polar'."
+        )
+
+    not_found = [m for m in molecules if m.lower() not in db]
+    if not_found:
+        raise ValueError(
+            "Molecule(s) not found in the LogP database:\n"
+            + "\n".join(f"  - {m}" for m in not_found)
+        )
+
+    # reverse=True  → descending LogP (polar column)
+    # reverse=False → ascending LogP  (apolar column)
+    reverse = (column_type == "polar")
+
+    def sort_key(mol):
+        entry      = db[mol.lower()]
+        logp       = entry["logp"]
+        smiles_len = len(entry["smiles"])
+        # Negate logp for descending sort without using reverse=True
+        # so that the tie-break (smiles_len) always sorts ascending
+        return (logp * (-1 if reverse else 1), smiles_len)
+
+    return sorted(molecules, key=sort_key)
+
+
+def sort_by_dipole(molecules, db, column_type):
+    """
+    Sort a list of molecules by dipole moment according to the column type.
+
+    Sorting rules:
+      - Apolar column : ascending dipole  (least polar elutes first)
+      - Polar column  : descending dipole (most polar elutes first)
+      - Tie-break     : shorter molecular formula string comes first
+
+    Parameters
+    ----------
+    molecules : list[str]
+        List of molecular formulas entered by the user.
+    db : dict
+        Database returned by load_dipole_db().
+    column_type : str
+        Column type: "apolar" or "polar".
+
+    Returns
+    -------
+    list[str]
+        List of molecule identifiers sorted in elution order (first to last).
+
+    Raises
+    ------
+    ValueError
+        If column_type is neither "apolar" nor "polar".
+        If the molecule list is empty.
+        If one or more molecules are not found in the database.
+    """
+    if not molecules:
+        raise ValueError("The molecule list is empty.")
+
+    if column_type not in ("apolar", "polar"):
+        raise ValueError(
+            f"Invalid column type: '{column_type}'. "
+            f"Accepted values: 'apolar' or 'polar'."
+        )
+
+    not_found = [m for m in molecules if m.lower() not in db]
+    if not_found:
+        raise ValueError(
+            "Molecule(s) not found in the dipole database:\n"
+            + "\n".join(f"  - {m}" for m in not_found)
+        )
+
+    reverse = (column_type == "polar")
+
+    def sort_key(mol):
+        entry   = db[mol.lower()]
+        dipole  = entry["dipole"]
+        mol_len = len(entry["molecule"])
+        return (dipole * (-1 if reverse else 1), mol_len)
+
+    return sorted(molecules, key=sort_key)
+>>>>>>> 62f6892306053891bff1dc45aca535a8b3cb6ca0
+>>>>>>> Stashed changes
