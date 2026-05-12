@@ -18,7 +18,12 @@ ipython_config.py
 .AppleDouble
 .LSOverride
 
+# Ignore Python cache
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# Ignore VSCode settings folder
+.vscode/
+
