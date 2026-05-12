@@ -184,13 +184,14 @@ class InterfaceElution:
             messagebox.showerror("Database error", str(e), parent=self.win_mol)
             return
 
+        # Molecules not found by SMILES in the database
         missing   = [m for m in molecules if m.lower() not in db]
         estimated = []
 
         if missing:
             for mol in missing:
                 try:
-                    estimated_logp = logp_corrige(mol)
+                    estimated_logp = logp_correction(mol)
                     db[mol.lower()] = {"smiles": mol, "logp": estimated_logp}
                     estimated.append(mol)
                 except Exception as e:
@@ -208,7 +209,7 @@ class InterfaceElution:
             messagebox.showerror("Sorting error", str(e), parent=self.win_mol)
             return
 
-        self._show_result(ordered, method="LogP", estimated=estimated)
+        self._show_result(ordered, method="Dipole moment", estimated=estimated)
 
     # ── Step 4b: Dipole calculation ────────────────────────────────────────────
 
