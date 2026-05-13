@@ -3,14 +3,12 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "ChromaCo"
+name = "chromaco"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {file = "LICENSE"}
 description = "Calculator of chromatography"
-dependencies = [
-    # "rdkit",
-]
+dependencies = []
 authors = [
     {name = "Mathéo Berger", email = "matheo.berger@epfl.ch"}
 ]
@@ -19,10 +17,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
 ]
@@ -33,34 +28,27 @@ source = "https://github.com/MathBerg1/ChromaCo"
 tracker = "https://github.com/MathBerg1/ChromaCo/issues"
 
 [project.optional-dependencies]
-test = [
-    "hypothesis",
-    "pytest",
-    "pytest-cov",
-    "tox",
-    "genbadge[coverage]",
-]
-doc = [
-    "furo",
-    "myst-parser",
-    "sphinx>=5",
-    "sphinx-copybutton",
-]
+test = ["hypothesis", "pytest", "pytest-cov", "tox", "genbadge[coverage]"]
+doc = ["furo", "myst-parser", "sphinx>=5", "sphinx-copybutton"]
 
 [tool.hatch.version]
 path = "src/chromaco/__init__.py"
 
+# 🔥 IMPORTANT : dire à Hatch où est ton package
+[tool.hatch.build]
+packages = ["src/chromaco"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/chromaco"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [tool.pytest.ini_options]
-testpaths = [
-    "tests",
-]
+testpaths = ["tests"]
 
 [tool.coverage.run]
-omit = [
-    '__init__.py'
-]
+omit = ['__init__.py']
 
 [tool.coverage.report]
-exclude_also = [
-    "if __name__ == .__main__.:",
-]
+exclude_also = ["if __name__ == .__main__.:"]
