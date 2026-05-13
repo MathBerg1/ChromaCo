@@ -10,7 +10,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fonctions_colonnes import plot_standard_addition
+from chromaco.interfaces.fonctions_colonnes import plot_standard_addition
 
 
 class InterfaceAjoutsDoses:

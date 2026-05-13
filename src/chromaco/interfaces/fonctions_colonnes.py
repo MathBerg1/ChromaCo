@@ -25,7 +25,7 @@ def theorical_plates_one(brut_retention_time: float, peak_width : float)-> float
     
     # Formula: N = 16 * (t_R / w)^2
     theorical_plates = 16*(brut_retention_time/peak_width)**2
-    return round(theorical_plates,3)
+    return theorical_plates
 
 def equivalent_high_one(column_length : float, brut_rentention_time : float, peak_width : float)-> float:
     """
@@ -1086,3 +1086,208 @@ if __name__ == "__main__":
         
     except ValueError as e:
         print(f"Erreur : {e}")
+
+
+def calculate_retention_factor(t_r, t_0):
+    """
+    Calculate the chromatographic retention factor k.
+
+    Parameters
+    ----------
+    t_r : float
+        Retention time of the analyte (same units as t_0).
+    t_0 : float
+        Dead time / void time of the column.
+
+    Returns
+    -------
+    float
+        The retention factor k.
+
+    Explanation
+    -----------
+    The retention factor k expresses how long an analyte is retained 
+    relative to an unretained compound. It is defined as:
+
+        k = (t_r - t_0) / t_0
+
+    Error Handling
+    --------------
+    Several ValueError checks are included:
+    - t_r or t_0 is None
+    - t_r or t_0 is not numeric
+    - t_0 <= 0 (dead time must be positive)
+    - t_r <= 0 (retention time must be positive)
+    - t_r <= t_0 (analyte cannot elute before or at dead time)
+    """
+    
+    # Check for None
+    if t_r is None:
+        raise ValueError("Retention time t_r cannot be None.")
+    if t_0 is None:
+        raise ValueError("Dead time t_0 cannot be None.")
+
+    # Check numeric type
+    if not isinstance(t_r, (int, float)):
+        raise ValueError("Retention time t_r must be a number.")
+    if not isinstance(t_0, (int, float)):
+        raise ValueError("Dead time t_0 must be a number.")
+
+    # Check positivity
+    if t_r <= 0:
+        raise ValueError("Retention time t_r must be strictly positive.")
+    if t_0 <= 0:
+        raise ValueError("Dead time t_0 must be strictly positive.")
+
+    # Logical chromatographic constraint
+    if t_r <= t_0:
+        raise ValueError("Retention time t_r must be greater than dead time t_0.")
+
+    return (t_r - t_0) / t_0
+
+
+
+def compare_two_columns_advanced(
+    columnA: dict,
+    columnB: dict,
+    column_length: float,
+    selected_peaks: list[int] | None = None,
+    mode: str = "global"
+):
+    """
+    Compare two chromatographic setups using essential parameters:
+    - Rs (resolution)
+    - N (theoretical plates)
+    - H (HETP)
+    - Peak width
+    - Total chromatography time
+
+    Rules:
+    - Rs < 1.5 is eliminatory ONLY if the peak is part of the selected peaks.
+    - A peak is considered poorly separated if Rs with previous OR next peak < 1.5.
+    - If both columns are eliminated, comparison is still performed and a flag is returned.
+
+    Parameters
+    ----------
+    columnA, columnB : dict
+        {index: [tR, w]} for each peak.
+    column_length : float
+        Column length for HETP calculation.
+    selected_peaks : list[int] | None
+        Peaks to compare (subset mode). If None → all peaks.
+    mode : str
+        "global" or "subset"
+
+    Returns
+    -------
+    dict
+        {
+            "verdict": {...},
+            "A": {...},
+            "B": {...},
+            "elimination": {"A": bool, "B": bool}
+        }
+    """
+
+    def compute_metrics(peaks):
+        indices = sorted(peaks.keys())
+
+        # N and H
+        N = {i: theorical_plates_one(peaks[i][0], peaks[i][1]) for i in indices}
+        H = {i: equivalent_high_one(column_length, peaks[i][0], peaks[i][1]) for i in indices}
+
+        # Peak widths
+        widths = {i: peaks[i][1] for i in indices}
+
+        # Rs between consecutive peaks
+        Rs = {}
+        for k in range(len(indices) - 1):
+            i1 = indices[k]
+            i2 = indices[k + 1]
+            Rs[(i1, i2)] = resolution_between_two_peaks(
+                peaks[i1][0], peaks[i2][0],
+                peaks[i1][1], peaks[i2][1]
+            )
+
+        # Total analysis time
+        total_time = max(peaks[i][0] for i in indices)
+
+        return {"N": N, "H": H, "widths": widths, "Rs": Rs, "time": total_time}
+
+    # Compute metrics
+    A = compute_metrics(columnA)
+    B = compute_metrics(columnB)
+
+    # -----------------------------
+    # 1. Select peaks to compare
+    # -----------------------------
+    if mode == "subset" and selected_peaks:
+        peaks_to_compare = selected_peaks
+    else:
+        peaks_to_compare = sorted(columnA.keys())
+
+    # -----------------------------
+    # 2. Eliminatory rule (Rs < 1.5)
+    # -----------------------------
+    def is_eliminated(metrics, peaks):
+        for p in peaks:
+            # Check Rs with previous peak
+            prev_pair = (p - 1, p)
+            if prev_pair in metrics["Rs"] and metrics["Rs"][prev_pair] < 1.5:
+                return True
+
+            # Check Rs with next peak
+            next_pair = (p, p + 1)
+            if next_pair in metrics["Rs"] and metrics["Rs"][next_pair] < 1.5:
+                return True
+
+        return False
+
+    elimA = is_eliminated(A, peaks_to_compare)
+    elimB = is_eliminated(B, peaks_to_compare)
+
+    # -----------------------------
+    # 3. Compute comparison scores
+    # -----------------------------
+    def sum_for_pairs(Rs_dict, peaks):
+        total = 0
+        for p in peaks:
+            if (p - 1, p) in Rs_dict:
+                total += Rs_dict[(p - 1, p)]
+            if (p, p + 1) in Rs_dict:
+                total += Rs_dict[(p, p + 1)]
+        return total
+
+    scoreA = {
+        "Rs": sum_for_pairs(A["Rs"], peaks_to_compare),
+        "N": sum(A["N"][p] for p in peaks_to_compare),
+        "H": sum(A["H"][p] for p in peaks_to_compare),
+        "widths": sum(A["widths"][p] for p in peaks_to_compare),
+        "time": A["time"]
+    }
+
+    scoreB = {
+        "Rs": sum_for_pairs(B["Rs"], peaks_to_compare),
+        "N": sum(B["N"][p] for p in peaks_to_compare),
+        "H": sum(B["H"][p] for p in peaks_to_compare),
+        "widths": sum(B["widths"][p] for p in peaks_to_compare),
+        "time": B["time"]
+    }
+
+    # -----------------------------
+    # 4. Verdict (even if eliminated)
+    # -----------------------------
+    verdict = {
+        "Best_resolution": "A" if scoreA["Rs"] > scoreB["Rs"] else "B",
+        "Best_efficiency_N": "A" if scoreA["N"] > scoreB["N"] else "B",
+        "Best_HETP": "A" if scoreA["H"] < scoreB["H"] else "B",
+        "Best_peak_width": "A" if scoreA["widths"] < scoreB["widths"] else "B",
+        "Fastest": "A" if scoreA["time"] < scoreB["time"] else "B",
+    }
+
+    return {
+        "verdict": verdict,
+        "A": scoreA,
+        "B": scoreB,
+        "elimination": {"A": elimA, "B": elimB}
+    }

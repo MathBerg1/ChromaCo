@@ -1,10 +1,12 @@
 import tkinter as tk
 # Importation des classes depuis les fichiers séparés (sans l'extension .py)
-from interface_hauteur_equivalente import InterfaceHauteur
-from interface_nb_de_plateau import InterfacePlateau
-from interface_resolution_two_peaks import InterfaceResolution
-from interface_standard_addition import InterfaceAjoutsDoses
-from interface_elut_ord import InterfaceElution
+from chromaco.interfaces.interface_hauteur_equivalente import InterfaceHauteur
+from chromaco.interfaces.interface_nb_de_plateau import InterfacePlateau
+from chromaco.interfaces.interface_resolution_two_peaks import InterfaceResolution
+from chromaco.interfaces.interface_standard_addition import InterfaceAjoutsDoses
+from chromaco.interfaces.interface_elut_ord import InterfaceElution
+from chromaco.interfaces.interface_retfac import InterfaceRetentionFactor
+from chromaco.interfaces.interface_comparison import InterfaceCompareColumns
 # from interface_c import InterfaceGraphique  # Exemple pour un 3ème fichier
 
 def ouvrir_hauteur():
@@ -64,6 +66,34 @@ btn_ajouts = tk.Button(
     height=2,
     bg="#ffdec4"
 )
+btn_ajouts.pack(pady=10)
+
+def ouvrir_retfac():
+    InterfaceRetentionFactor(root)
+
+btn_ajouts = tk.Button(
+    root,
+    text="Calculate retention factor",
+    command=ouvrir_retfac,
+    width=30,
+    height=2,
+    bg="#ffd5c4"
+)
+
+btn_ajouts.pack(pady=10)
+
+def ouvrir_comparison():
+    InterfaceCompareColumns(root)
+
+btn_ajouts = tk.Button(
+    root,
+    text="Compare two columns",
+    command=ouvrir_comparison,
+    width=30,
+    height=2,
+    bg="#ffd5c4"
+)
+
 btn_ajouts.pack(pady=10)
 
 
