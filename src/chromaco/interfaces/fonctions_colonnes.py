@@ -746,3 +746,343 @@ def calculate_selectivity_factor(brut_retention_times: dict[int, float], index: 
         
     return alpha
 
+import textwrap
+
+def craig_battery_simulation(
+    n_tubes: int, 
+    n_steps: int, 
+    k_values: dict, 
+    initial_load: dict = None,
+    visualize_step_by_step: bool = False,
+    visual_interval: int = 5
+):
+    """
+    Simulates the Craig Counter-Current Distribution model with optional console visualization.
+    
+    Parameters:
+    -----------
+    n_tubes : int
+        Number of tubes (0 to n_tubes-1).
+    n_steps : int
+        Number of transfer steps.
+    k_values : dict
+        {name: K_coefficient}. K = C_stat / C_mob.
+    initial_load : dict, optional
+        {name: amount}. Defaults to 1.0 for each.
+    visualize_step_by_step : bool
+        If True, prints a table to the console showing the distribution at each step.
+    visual_interval : int
+        Prints the table every N steps (to avoid flooding the console if n_steps is large).
+        Only used if visualize_step_by_step is True.
+        
+    Returns:
+    --------
+    history : dict
+        {name: 2D_numpy_array} containing the full history (steps x tubes).
+    """
+    if initial_load is None:
+        initial_load = {name: 1.0 for name in k_values}
+        
+    if set(initial_load.keys()) != set(k_values.keys()):
+        raise ValueError("Keys in k_values and initial_load must match.")
+    
+    # Initialization
+    history = {name: np.zeros((n_steps, n_tubes)) for name in k_values}
+    current_state = {name: np.zeros(n_tubes) for name in k_values}
+    
+    # Initial load in tube 0
+    for name, amount in initial_load.items():
+        current_state[name][0] = amount
+        history[name][0, :] = current_state[name].copy()
+    
+    # Prepare Header for Visualization
+    if visualize_step_by_step:
+        print(f"\nStarting Simulation: {n_tubes} tubes, {n_steps} steps.")
+        print(f"Visualization interval: Every {visual_interval} steps.\n")
+        
+        # Create header string: Step | Tube 0 | Tube 1 | ...
+        # We limit the display to the first 15 tubes if n_tubes is huge to keep console readable,
+        # or show all if manageable.
+        display_tubes = min(n_tubes, 20) 
+        header = f"{'Step':>4} | " + " | ".join([f"T{i:>2}" for i in range(display_tubes)])
+        if n_tubes > 20:
+            header += " | ..."
+        print(header)
+        print("-" * len(header))
+
+    # Simulation Loop
+    for step in range(1, n_steps):
+        for name, K in k_values.items():
+            q_tot = current_state[name]
+            
+            # Equilibrium fractions
+            p = 1.0 / (1.0 + K) 
+            q = K / (1.0 + K)   
+            
+            c_mobile = q_tot * p
+            c_stationary = q_tot * q
+            
+            # Transfer
+            new_mobile = np.zeros(n_tubes)
+            if n_tubes > 1:
+                new_mobile[1:] = c_mobile[:-1]
+            
+            current_state[name] = new_mobile + c_stationary
+            history[name][step, :] = current_state[name].copy()
+        
+        # --- VISUALIZATION BLOCK ---
+        if visualize_step_by_step and (step % visual_interval == 0 or step == n_steps - 1):
+            # We will print one row per compound, or combine them? 
+            # Let's print the sum of all compounds or just the first one for simplicity, 
+            # or stack them. Let's print the Total Mass in each tube for all compounds combined
+            # OR better: Print the position of the peak for each compound.
+            
+            # Option A: Print a matrix row for each compound (can be tall)
+            # Option B: Print a summary line: Step | Peak A Pos | Peak B Pos | ...
+            # Let's go with Option B for readability in a scrolling terminal, 
+            # plus a mini-bar chart for the first compound if requested.
+            
+            # Summary Line:
+            summary = f"{step:>4} | "
+            for name in k_values.keys():
+                profile = history[name][step, :]
+                max_pos = np.argmax(profile)
+                max_val = np.max(profile)
+                # Format: "Name:Pos(Value)"
+                summary += f"{name.split()[0]}:{max_pos}({max_val:.2f}) | "
+            
+            print(summary)
+            
+            # Optional: Mini ASCII Bar Chart for the first compound (only every 10 intervals to save space)
+            if step % (visual_interval * 2) == 0:
+                first_compound = list(k_values.keys())[0]
+                profile = history[first_compound][step, :]
+                # Normalize to 20 chars width
+                max_val = np.max(profile)
+                if max_val > 0:
+                    bar_width = 40
+                    chart = ""
+                    for i in range(min(n_tubes, 20)): # Show first 20 tubes
+                        val = profile[i]
+                        bar_len = int((val / max_val) * bar_width) if max_val > 0 else 0
+                        chart += "#" * bar_len + "\n" if i == 0 else "" # Just a simple indicator
+                    # Simple linear representation
+                    line = ""
+                    for i in range(min(n_tubes, 50)):
+                        if profile[i] > max_val * 0.1: line += "*"
+                        elif profile[i] > 0: line += "."
+                        else: line += " "
+                    print(f"       Profile ({first_compound.split()[0]}): [{line}]")
+
+    print("\nSimulation Complete.")
+    return history
+
+# ==============================================================================
+# EXEMPLE D'UTILISATION
+# ==============================================================================
+
+if __name__ == "__main__":
+    # Configuration
+    TUBES = 30
+    STEPS = 40
+    
+    compounds = {
+        "Fast(K0.5)": 0.5,
+        "Slow(K2.0)": 2.0
+    }
+    
+    # Lancement avec visualisation activée (True)
+    # visual_interval=2 affiche un tableau toutes les 2 étapes
+    results = craig_battery_simulation(
+        n_tubes=TUBES,
+        n_steps=STEPS,
+        k_values=compounds,
+        visualize_step_by_step=True,
+        visual_interval=2
+    )
+    
+    print("\nFinal Results Array Shape:", results["Fast(K0.5)"].shape)
+
+import math
+
+def calculate_kovats_index(
+    gross_retention_unknown: float,
+    all_gross_times: list[float],
+    alkane_data: dict[int, float],
+    n_carbon_before: int,
+    n_carbon_after: int
+) -> float:
+    """
+    Calculates the Kovats Retention Index (I) for a specific compound.
+    
+    The calculation uses the Van den Dool and Kratz equation based on net retention times:
+    I = 100 * [ n + (log(t'R_x) - log(t'R_n)) / (log(t'R_N) - log(t'R_n)) ]
+    
+    Where:
+    - n = carbon number of the n-alkane eluting BEFORE the compound.
+    - N = carbon number of the n-alkane eluting AFTER the compound.
+    - t'R_x = net retention time of the unknown compound.
+    - t'R_n = net retention time of the n-alkane with carbon number 'n'.
+    - t'R_N = net retention time of the n-alkane with carbon number 'N'.
+    
+    Parameters:
+    -----------
+    gross_retention_unknown : float
+        The gross (observed) retention time of the compound to analyze.
+    all_gross_times : list[float]
+        List of gross retention times for ALL peaks (including the unknown and the alkanes).
+        Used to calculate net times via 'calculate_net_retention_times'.
+    alkane_data : dict[int, float]
+        Dictionary {carbon_number: gross_retention_time} for n-alkane references.
+        Required for dead time calculation inside the helper function.
+    n_carbon_before : int
+        The carbon number (z) of the n-alkane eluting immediately BEFORE the unknown.
+        (e.g., 10 if the unknown is between C10 and C11).
+    n_carbon_after : int
+        The carbon number (z) of the n-alkane eluting immediately AFTER the unknown.
+        (e.g., 11 if the unknown is between C10 and C11).
+        Must be equal to n_carbon_before + 1 (or more if gaps exist, but consecutive is standard).
+        
+    Returns:
+    --------
+    float
+        The Kovats Retention Index (I).
+        
+    Raises:
+    -------
+    ValueError
+        If the alkane retention times are not found in the data,
+        if the net times are negative or zero,
+        or if the order of elution is inconsistent.
+    """
+    
+    # 1. Calculate Net Retention Times for everyone
+    # We construct a list that includes the unknown and the alkane times to ensure 
+    # they are all processed with the same dead time (tM).
+    
+    # Extract alkane gross times from the dictionary to add them to the list if not already there
+    # Note: The user should ideally pass a list containing everything, but we ensure alkanes are included for calculation.
+    processing_list = list(all_gross_times)
+    
+    # Ensure the unknown is in the list (it should be, but safety check)
+    if gross_retention_unknown not in processing_list:
+        processing_list.append(gross_retention_unknown)
+        
+    # Ensure alkane references are in the list (crucial for getting their net times)
+    for t_alk in alkane_data.values():
+        if t_alk not in processing_list:
+            processing_list.append(t_alk)
+            
+    # Calculate net times using your provided function
+    try:
+        net_times_list = calculate_net_retention_times(
+            all_retention_times=processing_list,
+            alkane_data=alkane_data
+        )
+    except ValueError as e:
+        raise ValueError(f"Failed to calculate net retention times: {e}")
+    
+    # Create a mapping from gross time to net time for easy lookup
+    # Using a small tolerance for float comparison if necessary, but direct mapping works for same list
+    time_map = dict(zip(processing_list, net_times_list))
+    
+    # 2. Retrieve specific net times
+    t_net_unknown = time_map.get(gross_retention_unknown)
+    
+    if n_carbon_before not in alkane_data:
+        raise ValueError(f"Alkane C{n_carbon_before} not found in alkane_data.")
+    if n_carbon_after not in alkane_data:
+        raise ValueError(f"Alkane C{n_carbon_after} not found in alkane_data.")
+        
+    gross_n = alkane_data[n_carbon_before]
+    gross_N = alkane_data[n_carbon_after]
+    
+    t_net_n = time_map.get(gross_n)
+    t_net_N = time_map.get(gross_N)
+    
+    # Validation checks
+    if t_net_unknown is None or t_net_n is None or t_net_N is None:
+        raise ValueError("Could not map gross times to net times correctly.")
+        
+    if t_net_unknown <= 0 or t_net_n <= 0 or t_net_N <= 0:
+        raise ValueError("Net retention times must be positive for Kovats index calculation.")
+        
+    if not (t_net_n < t_net_unknown < t_net_N):
+        # Warning or Error? Usually strict error if the user claims wrong encadrement
+        raise ValueError(
+            f"Elution order mismatch: The unknown (net tR'={t_net_unknown:.4f}) is not between "
+            f"C{n_carbon_before} (net tR'={t_net_n:.4f}) and C{n_carbon_after} (net tR'={t_net_N:.4f})."
+        )
+
+    # 3. Apply Van den Dool and Kratz Equation
+    # I = 100 * [ n + (log(t'R_x) - log(t'R_n)) / (log(t'R_N) - log(t'R_n)) ]
+    
+    log_unknown = math.log10(t_net_unknown)
+    log_n = math.log10(t_net_n)
+    log_N = math.log10(t_net_N)
+    
+    denominator = log_N - log_n
+    
+    if denominator == 0:
+        raise ValueError("The net retention times of the two reference alkanes are identical.")
+        
+    interpolation_factor = (log_unknown - log_n) / denominator
+    
+    kovats_index = 100 * (n_carbon_before + interpolation_factor)
+    
+    return kovats_index
+if __name__ == "__main__":
+    # Supposons que nous ayons déjà la fonction calculate_dead_time_kovats définie ailleurs
+    # Pour l'exemple, on simule son existence ou on l'importe.
+    # Ici, je recrée une version minimale pour que l'exemple soit autonome si vous copiez-collez tout.
+    def calculate_dead_time_kovats(retention_times: dict[int, float]) -> float:
+        # (Version simplifiée pour l'exemple, utilisez la vôtre)
+        sorted_indices = sorted(retention_times.keys())
+        if len(sorted_indices) < 3: return 0.0
+        # Mock calculation for standalone test
+        return 0.5 
+
+    def calculate_net_retention_times(all_retention_times: list[float], alkane_data: dict[int, float]) -> list[float]:
+        # (Utilisation de votre fonction fournie)
+        t_dead = 0.5 # Mock pour l'exemple si la vraie fonction n'est pas là
+        try:
+            # Dans un vrai script, appelez la vraie fonction ici
+            # t_dead = calculate_dead_time_kovats(alkane_data)
+            pass 
+        except: pass
+        
+        return [t - t_dead for t in all_retention_times]
+
+    # DONNÉES DE TEST
+    # Alcanes : C10 (10.0 min), C11 (12.0 min) -> Bruts
+    alkane_refs = {
+        10: 10.0,
+        11: 12.0,
+        12: 15.0 # Nécessaire pour le calcul du temps mort
+    }
+    
+    # Tous les temps bruts observés (Alcanes + Inconnu)
+    # L'inconnu est à 10.8 min (entre C10 et C11)
+    all_times = [10.0, 10.8, 12.0, 15.0]
+    
+    unknown_time = 10.8
+    n_before = 10
+    n_after = 11
+    
+    try:
+        index = calculate_kovats_index(
+            gross_retention_unknown=unknown_time,
+            all_gross_times=all_times,
+            alkane_data=alkane_refs,
+            n_carbon_before=n_before,
+            n_carbon_after=n_after
+        )
+        
+        print(f"Composé à tR={unknown_time} min")
+        print(f"Encadré par C{n_before} et C{n_after}")
+        print(f"Indice de Kovats calculé : {index:.1f}")
+        # Résultat attendu : Entre 1000 et 1100. 
+        # Si log-linéaire, ~1000 + 100 * (log(10.3)/log(11.5)) approx 1030-1040
+        
+    except ValueError as e:
+        print(f"Erreur : {e}")
