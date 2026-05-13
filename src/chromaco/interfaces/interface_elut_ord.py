@@ -20,7 +20,7 @@ from tkinter import messagebox
 
 from predictions.logpprd import logp_correction
 from predictions.dipoleprd import dipole_rdkit
-from interfaces.fonctions_colonnes import (
+from fonctions_colonnes import (
     load_logp_db,
     load_dipole_db,
     sort_by_logp,

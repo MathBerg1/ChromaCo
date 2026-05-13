@@ -1,0 +1,9 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: 08e8b92
+_src_path: gh:schwallergroup/copier-liac-minimal
+author_email: matheo.berger@epfl.ch
+author_name: Mathéo Berger
+github_org: MathBerg1
+package_name: chromaco
+project_name: ChromaCo
+short_description: Calculator of chromatography

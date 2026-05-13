@@ -4,6 +4,7 @@ from interface_hauteur_equivalente import InterfaceHauteur
 from interface_nb_de_plateau import InterfacePlateau
 from interface_resolution_two_peaks import InterfaceResolution
 from interface_standard_addition import InterfaceAjoutsDoses
+from interface_elut_ord import InterfaceElution
 # from interface_c import InterfaceGraphique  # Exemple pour un 3ème fichier
 
 def ouvrir_hauteur():
@@ -44,7 +45,7 @@ btn_c = tk.Button(root, text="Calculate resolution between two peaks", command=o
 btn_c.pack(pady=10)
 
 
-from interface_elut_ord import InterfaceElution
+
 
 def ouvrir_elution():
     InterfaceElution(root)
