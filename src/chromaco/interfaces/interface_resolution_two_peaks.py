@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
-from fonctions_colonnes import resolution_between_two_peaks
+from chromaco.interfaces.fonctions_colonnes import resolution_between_two_peaks
 
 
 class InterfaceResolution:

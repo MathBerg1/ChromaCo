@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
-from fonctions_colonnes import calculate_retention_factor
+from chromaco.interfaces.fonctions_colonnes import calculate_retention_factor
 
 
 class InterfaceRetentionFactor:

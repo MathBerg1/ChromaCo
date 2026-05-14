@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import math
 
 
 
@@ -1155,28 +1156,55 @@ def compare_two_columns_advanced(
     mode: str = "global"
 ):
     """
-    Compare two chromatographic setups using essential parameters:
-    - Rs (resolution)
-    - N (theoretical plates)
-    - H (HETP)
-    - Peak width
-    - Total chromatography time
+    Compare two chromatographic columns using peak‑based performance metrics.
 
-    Rules:
-    - Rs < 1.5 is eliminatory ONLY if the peak is part of the selected peaks.
-    - A peak is considered poorly separated if Rs with previous OR next peak < 1.5.
-    - If both columns are eliminated, comparison is still performed and a flag is returned.
+    This function evaluates two chromatographic columns (A and B) based on:
+    - Resolution between consecutive peaks (Rs)
+    - Theoretical plates (N)
+    - Height Equivalent to a Theoretical Plate (HETP, H)
+    - Peak widths
+    - Total analysis time
+
+    Only **consecutive peak pairs (i, i+1)** are considered for resolution and
+    scoring. Non‑adjacent peaks are never compared. Resolution pairs are counted
+    **exactly once**, eliminating all double‑counting issues.
+
+    Additionally, if **any individual resolution value (not the sum)** is below
+    1.5 for a peak pair included in the comparison, a warning message is added
+    to the output under `"warnings"`.
 
     Parameters
     ----------
-    columnA, columnB : dict
-        {index: [tR, w]} for each peak.
+    columnA : dict
+        Dictionary of peaks for column A.
+        Format: {peak_index: [tR, w]}
+        - tR : retention time (float)
+        - w  : peak width at base (float)
+
+    columnB : dict
+        Same structure as columnA, but for column B.
+
     column_length : float
-        Column length for HETP calculation.
-    selected_peaks : list[int] | None
-        Peaks to compare (subset mode). If None → all peaks.
-    mode : str
-        "global" or "subset"
+        Column length in meters, used for HETP calculation.
+
+    selected_peaks : list[int] or None, optional
+        List of peak indices selected by the user.
+        - If None → all peaks are used.
+        - Only consecutive pairs (i, i+1) among selected peaks are compared.
+
+    mode : {"global", "subset"}, optional
+        - "global" : compare all peaks in the dataset.
+        - "subset" : compare only peaks listed in `selected_peaks`.
+
+    Rules
+    -----
+    - Only consecutive peak pairs (i, i+1) are considered.
+    - Resolution is counted **once per pair**.
+    - A column is considered "eliminated" if any Rs < 1.5 for a pair included
+      in the comparison set.
+    - Even if a column is eliminated, the comparison is still computed and
+      returned.
+    - A warning message is generated for each peak pair with Rs < 1.5.
 
     Returns
     -------
@@ -1185,31 +1213,46 @@ def compare_two_columns_advanced(
             "verdict": {...},
             "A": {...},
             "B": {...},
-            "elimination": {"A": bool, "B": bool}
+            "elimination": {"A": bool, "B": bool},
+            "pairs_used": [(i, i+1), ...],
+            "warnings": {
+                "A": [messages...],
+                "B": [messages...]
+            }
         }
     """
 
+    # ---------------------------------------------------------
+    # SAFETY WRAPPER FOR N
+    # ---------------------------------------------------------
+    def safe_theoretical_plates(tR, w):
+        try:
+            if tR <= 0 or w <= 0:
+                return 0
+            N = theorical_plates_one(tR, w)
+            return N if N > 0 else 0
+        except:
+            return 0
+
+    # ---------------------------------------------------------
+    # METRICS FOR ONE COLUMN
+    # ---------------------------------------------------------
     def compute_metrics(peaks):
         indices = sorted(peaks.keys())
+        if not indices:
+            return {"N": {}, "H": {}, "widths": {}, "Rs": {}, "time": 0}
 
-        # N and H
-        N = {i: theorical_plates_one(peaks[i][0], peaks[i][1]) for i in indices}
+        N = {i: safe_theoretical_plates(peaks[i][0], peaks[i][1]) for i in indices}
         H = {i: equivalent_high_one(column_length, peaks[i][0], peaks[i][1]) for i in indices}
-
-        # Peak widths
         widths = {i: peaks[i][1] for i in indices}
 
-        # Rs between consecutive peaks
         Rs = {}
-        for k in range(len(indices) - 1):
-            i1 = indices[k]
-            i2 = indices[k + 1]
+        for i1, i2 in zip(indices[:-1], indices[1:]):
             Rs[(i1, i2)] = resolution_between_two_peaks(
                 peaks[i1][0], peaks[i2][0],
                 peaks[i1][1], peaks[i2][1]
             )
 
-        # Total analysis time
         total_time = max(peaks[i][0] for i in indices)
 
         return {"N": N, "H": H, "widths": widths, "Rs": Rs, "time": total_time}
@@ -1218,65 +1261,72 @@ def compare_two_columns_advanced(
     A = compute_metrics(columnA)
     B = compute_metrics(columnB)
 
-    # -----------------------------
-    # 1. Select peaks to compare
-    # -----------------------------
+    # ---------------------------------------------------------
+    # PEAK SELECTION
+    # ---------------------------------------------------------
     if mode == "subset" and selected_peaks:
-        peaks_to_compare = selected_peaks
+        selected_peaks = sorted(selected_peaks)
     else:
-        peaks_to_compare = sorted(columnA.keys())
+        selected_peaks = sorted(columnA.keys())
 
-    # -----------------------------
-    # 2. Eliminatory rule (Rs < 1.5)
-    # -----------------------------
-    def is_eliminated(metrics, peaks):
+    # ---------------------------------------------------------
+    # BUILD VALID CONSECUTIVE PAIRS
+    # ---------------------------------------------------------
+    def build_consecutive_pairs(peaks):
+        pairs = []
         for p in peaks:
-            # Check Rs with previous peak
-            prev_pair = (p - 1, p)
-            if prev_pair in metrics["Rs"] and metrics["Rs"][prev_pair] < 1.5:
-                return True
+            if (p, p+1) in A["Rs"]:
+                pairs.append((p, p+1))
+        return pairs
 
-            # Check Rs with next peak
-            next_pair = (p, p + 1)
-            if next_pair in metrics["Rs"] and metrics["Rs"][next_pair] < 1.5:
-                return True
+    valid_pairs = build_consecutive_pairs(selected_peaks)
 
-        return False
+    # ---------------------------------------------------------
+    # ELIMINATORY RULE + WARNINGS
+    # ---------------------------------------------------------
+    def check_elimination_and_warnings(metrics, pairs, label):
+        eliminated = False
+        warnings = []
 
-    elimA = is_eliminated(A, peaks_to_compare)
-    elimB = is_eliminated(B, peaks_to_compare)
+        for (i1, i2) in pairs:
+            if (i1, i2) in metrics["Rs"]:
+                Rs_val = metrics["Rs"][(i1, i2)]
+                if Rs_val < 1.5:
+                    eliminated = True
+                    warnings.append(
+                        f"Column {label}: Peak pair ({i1}, {i2}) has Rs = {Rs_val:.3f} < 1.5"
+                    )
 
-    # -----------------------------
-    # 3. Compute comparison scores
-    # -----------------------------
-    def sum_for_pairs(Rs_dict, peaks):
-        total = 0
-        for p in peaks:
-            if (p - 1, p) in Rs_dict:
-                total += Rs_dict[(p - 1, p)]
-            if (p, p + 1) in Rs_dict:
-                total += Rs_dict[(p, p + 1)]
-        return total
+        return eliminated, warnings
+
+    elimA, warnA = check_elimination_and_warnings(A, valid_pairs, "A")
+    elimB, warnB = check_elimination_and_warnings(B, valid_pairs, "B")
+
+    # ---------------------------------------------------------
+    # SCORES (NO DOUBLE COUNTING)
+    # ---------------------------------------------------------
+    def sum_resolutions(Rs_dict, pairs):
+        return sum(Rs_dict[p] for p in pairs if p in Rs_dict)
 
     scoreA = {
-        "Rs": sum_for_pairs(A["Rs"], peaks_to_compare),
-        "N": sum(A["N"][p] for p in peaks_to_compare),
-        "H": sum(A["H"][p] for p in peaks_to_compare),
-        "widths": sum(A["widths"][p] for p in peaks_to_compare),
+        "Rs": sum_resolutions(A["Rs"], valid_pairs),
+        "N": sum(A["N"].get(i, 0) for pair in valid_pairs for i in pair),
+        "H": sum(A["H"].get(i, 0) for pair in valid_pairs for i in pair),
+        "widths": sum(A["widths"].get(i, 0) for pair in valid_pairs for i in pair),
         "time": A["time"]
     }
 
     scoreB = {
-        "Rs": sum_for_pairs(B["Rs"], peaks_to_compare),
-        "N": sum(B["N"][p] for p in peaks_to_compare),
-        "H": sum(B["H"][p] for p in peaks_to_compare),
-        "widths": sum(B["widths"][p] for p in peaks_to_compare),
+        "Rs": sum_resolutions(B["Rs"], valid_pairs),
+        "N": sum(B["N"].get(i, 0) for pair in valid_pairs for i in pair),
+        "H": sum(B["H"].get(i, 0) for pair in valid_pairs for i in pair),
+        "widths": sum(B["widths"].get(i, 0) for pair in valid_pairs for i in pair),
         "time": B["time"]
     }
 
-    # -----------------------------
-    # 4. Verdict (even if eliminated)
-    # -----------------------------
+    # ---------------------------------------------------------
+    # VERDICT
+    # ---------------------------------------------------------
     verdict = {
         "Best_resolution": "A" if scoreA["Rs"] > scoreB["Rs"] else "B",
         "Best_efficiency_N": "A" if scoreA["N"] > scoreB["N"] else "B",
@@ -1289,5 +1339,7 @@ def compare_two_columns_advanced(
         "verdict": verdict,
         "A": scoreA,
         "B": scoreB,
-        "elimination": {"A": elimA, "B": elimB}
+        "elimination": {"A": elimA, "B": elimB},
+        "pairs_used": valid_pairs,
+        "warnings": {"A": warnA, "B": warnB}
     }

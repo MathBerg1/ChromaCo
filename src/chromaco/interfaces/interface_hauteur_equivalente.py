@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
-from fonctions_colonnes import equivalent_high_one
+from chromaco.interfaces.fonctions_colonnes import equivalent_high_one
 
 
 class InterfaceHauteur:
