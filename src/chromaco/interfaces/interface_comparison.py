@@ -1,236 +1,297 @@
 import tkinter as tk
+import sys
 from tkinter import messagebox
 from chromaco.interfaces.fonctions_colonnes import compare_two_columns_advanced
 
+# ── Shared design tokens ─────────────────────────────────────────────────────
+BG       = "#0f1117"
+SURFACE  = "#1a1d27"
+SURFACE2 = "#20243a"
+BORDER   = "#2a2d3e"
+ACCENT   = "#b794f4"
+ACCENT2  = "#4f9cf9"
+TEXT_PRI = "#e8eaf2"
+TEXT_SEC = "#7b80a0"
+DANGER   = "#f7706a"
+SUCCESS  = "#68d391"
+WARNING  = "#f6ad55"
+
+
+# ── Reusable widget builders ───────────────────────────────────────────────────
+
+def styled_label_frame(parent, text):
+    wrapper = tk.Frame(parent, bg=BG)
+    tk.Label(wrapper, text=text.upper(), font=("Segoe UI", 8, "bold"),
+             fg=ACCENT, bg=BG).pack(anchor="w", pady=(0, 4))
+    inner = tk.Frame(wrapper, bg=SURFACE, highlightbackground=BORDER,
+                     highlightthickness=1)
+    inner.pack(fill="x")
+    return wrapper, inner
+
+
+def styled_entry(parent, default="", width=12):
+    e = tk.Entry(parent, width=width, font=("Segoe UI", 10),
+                 bg=SURFACE2, fg=TEXT_PRI, insertbackground=TEXT_PRI,
+                 relief="flat", highlightbackground=BORDER,
+                 highlightthickness=1, highlightcolor=ACCENT)
+    e.insert(0, default)
+    return e
+
+
+def scrollable_text(parent, height=5):
+    frame = tk.Frame(parent, bg=SURFACE2, highlightbackground=BORDER,
+                     highlightthickness=1)
+    sb = tk.Scrollbar(frame, orient="vertical")
+    sb.pack(side="right", fill="y")
+    t = tk.Text(frame, height=height, font=("Segoe UI Mono", 10),
+                bg=SURFACE2, fg=TEXT_PRI, insertbackground=TEXT_PRI,
+                relief="flat", highlightthickness=0,
+                selectbackground=ACCENT, selectforeground=BG,
+                wrap="none", padx=8, pady=6,
+                yscrollcommand=sb.set)
+    t.pack(side="left", fill="both", expand=True)
+    sb.config(command=t.yview)
+    return frame, t
+
+
+def scrollable_listbox(parent, height=6):
+    frame = tk.Frame(parent, bg=SURFACE2, highlightbackground=BORDER,
+                     highlightthickness=1)
+    sb = tk.Scrollbar(frame, orient="vertical")
+    sb.pack(side="right", fill="y")
+    lb = tk.Listbox(frame, height=height, font=("Segoe UI Mono", 10),
+                    bg=SURFACE2, fg=TEXT_PRI,
+                    selectbackground=ACCENT, selectforeground=BG,
+                    relief="flat", highlightthickness=0,
+                    activestyle="none", selectmode="multiple",
+                    borderwidth=0, yscrollcommand=sb.set)
+    lb.pack(side="left", fill="both", expand=True)
+    sb.config(command=lb.yview)
+    return frame, lb
+
+
+# ───────────────────────────────────────────────────────────────────────────────
+#                           INTERFACE COMPARE COLUMNS (FIXED)
+# ───────────────────────────────────────────────────────────────────────────────
 
 class InterfaceCompareColumns:
     def __init__(self, parent):
-
         self.fenetre = tk.Toplevel(parent)
-        self.fenetre.title("Comparison of two chromatography columns")
-        self.fenetre.geometry("720x780")
+        self.fenetre.title("Compare Columns")
+        self.fenetre.geometry("700x760")
         self.fenetre.resizable(True, True)
+        self.fenetre.config(bg=BG)
 
-        # ───────────────────────────────────────────────
-        # SCROLLABLE CANVAS (global scroll)
-        # ───────────────────────────────────────────────
-        container = tk.Frame(self.fenetre)
-        container.pack(fill="both", expand=True)
+        # DPI scaling
+        try:
+            scale = self.fenetre.winfo_fpixels("1i") / 72
+            if scale > 1.25:
+                self.fenetre.tk.call("tk", "scaling", scale)
+        except Exception:
+            pass
 
-        self.canvas = tk.Canvas(container, highlightthickness=0)
+        # ── Header ───────────────────────────────────────────────────────────
+        hdr = tk.Frame(self.fenetre, bg=BG)
+        hdr.pack(fill="x", padx=28, pady=(24, 0))
+        tk.Label(hdr, text="C H R O M A C O", font=("Segoe UI", 8, "bold"),
+                 fg=ACCENT, bg=BG).pack(anchor="w")
+        tk.Label(hdr, text="Compare Columns", font=("Segoe UI", 20, "bold"),
+                 fg=TEXT_PRI, bg=BG).pack(anchor="w", pady=(2, 2))
+        tk.Label(hdr, text="Side-by-side chromatographic column analysis",
+                 font=("Segoe UI", 9), fg=TEXT_SEC, bg=BG).pack(anchor="w")
+        tk.Frame(self.fenetre, bg=ACCENT, height=2).pack(fill="x", padx=28, pady=(12, 0))
+
+        # ── Scrollable canvas (LOCAL SCROLL ONLY) ─────────────────────────────
+        scroll_outer = tk.Frame(self.fenetre, bg=BG)
+        scroll_outer.pack(fill="both", expand=True, padx=28, pady=(14, 0))
+
+        self.canvas = tk.Canvas(scroll_outer, bg=BG, highlightthickness=0, bd=0)
+        gsb = tk.Scrollbar(scroll_outer, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=gsb.set)
+        gsb.pack(side="right", fill="y")
         self.canvas.pack(side="left", fill="both", expand=True)
 
-        scrollbar = tk.Scrollbar(container, orient="vertical", command=self.canvas.yview)
-        scrollbar.pack(side="right", fill="y")
+        sf = tk.Frame(self.canvas, bg=BG)
+        self._sf_win = self.canvas.create_window((0, 0), window=sf, anchor="nw")
 
-        self.canvas.configure(yscrollcommand=scrollbar.set)
+        sf.bind("<Configure>", lambda e: self.canvas.configure(
+            scrollregion=self.canvas.bbox("all")))
+        self.canvas.bind("<Configure>", lambda e: self.canvas.itemconfig(
+            self._sf_win, width=e.width))
 
-        self.scroll_frame = tk.Frame(self.canvas)
-        self.canvas.create_window((0, 0), window=self.scroll_frame, anchor="nw")
+        # ENABLE LOCAL SCROLL
+        self._enable_canvas_scroll()
 
-        self.scroll_frame.bind("<Configure>",
-                               lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+        PAD = {"padx": 0, "pady": 8, "fill": "x"}
 
-        # Scroll global
-        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        # ── Column length ─────────────────────────────────────────────────────
+        wrap, card = styled_label_frame(sf, "Column Configuration")
+        wrap.pack(**PAD)
+        row = tk.Frame(card, bg=SURFACE)
+        row.pack(fill="x", padx=14, pady=12)
+        tk.Label(row, text="Column length (m)", font=("Segoe UI", 10),
+                 fg=TEXT_SEC, bg=SURFACE).pack(side="left")
+        self.entry_length = styled_entry(row, default="0.25", width=10)
+        self.entry_length.pack(side="left", padx=(12, 0))
 
-        # ───────────────────────────────────────────────
-        # COLUMN LENGTH
-        # ───────────────────────────────────────────────
-        frame_len = tk.LabelFrame(self.scroll_frame, text="Column configuration", padx=10, pady=10)
-        frame_len.pack(fill="x", padx=15, pady=10)
+        # ── Column A ──────────────────────────────────────────────────────────
+        wrap, card = styled_label_frame(sf, "Column A — Data Input")
+        wrap.pack(**PAD)
+        tk.Label(card, text="Paste two columns: retention time | peak width",
+                 font=("Segoe UI", 9), fg=TEXT_SEC, bg=SURFACE).pack(anchor="w", padx=14, pady=(10, 4))
+        boxA_frame, self.boxA = scrollable_text(card, height=5)
+        boxA_frame.pack(fill="x", padx=14, pady=(0, 12))
+        self._enable_widget_scroll(self.boxA)
 
-        tk.Label(frame_len, text="Column length [m] :").grid(row=0, column=0, sticky="w")
-        self.entry_length = tk.Entry(frame_len, width=10)
-        self.entry_length.grid(row=0, column=1, padx=10)
-        self.entry_length.insert(0, "0.25")
+        # ── Column B ──────────────────────────────────────────────────────────
+        wrap, card = styled_label_frame(sf, "Column B — Data Input")
+        wrap.pack(**PAD)
+        tk.Label(card, text="Paste two columns: retention time | peak width",
+                 font=("Segoe UI", 9), fg=TEXT_SEC, bg=SURFACE).pack(anchor="w", padx=14, pady=(10, 4))
+        boxB_frame, self.boxB = scrollable_text(card, height=5)
+        boxB_frame.pack(fill="x", padx=14, pady=(0, 12))
+        self._enable_widget_scroll(self.boxB)
 
-        # ───────────────────────────────────────────────
-        # COLUMN A INPUT
-        # ───────────────────────────────────────────────
-        frame_A = tk.LabelFrame(self.scroll_frame, text="Column A — paste data", padx=10, pady=10)
-        frame_A.pack(fill="x", padx=15, pady=5)
+        # ── Parse button ──────────────────────────────────────────────────────
+        self._make_action_btn(sf, "  Parse Data", self._parse_all, WARNING).pack(pady=(4, 0))
 
-        tk.Label(frame_A, text="Paste two columns: retention time | peak width",
-                 fg="#555", font=("Arial", 9)).pack(anchor="w")
+        # ── Peak selection ────────────────────────────────────────────────────
+        wrap, card = styled_label_frame(sf, "Peak Selection")
+        wrap.pack(**PAD)
+        tk.Label(card, text="If no peak is selected, all peaks will be compared.",
+                 font=("Segoe UI", 9), fg=TEXT_SEC, bg=SURFACE).pack(anchor="w", padx=14, pady=(10, 4))
+        lb_frame, self.listbox_peaks = scrollable_listbox(card, height=6)
+        lb_frame.pack(fill="x", padx=14, pady=(0, 12))
+        self._enable_widget_scroll(self.listbox_peaks)
 
-        self.boxA = tk.Text(frame_A, height=5, font=("Courier", 10))
-        self.boxA.pack(fill="x", pady=5)
+        # ── Compare button ────────────────────────────────────────────────────
+        self._make_action_btn(sf, "  Compare Columns", self._compare, SUCCESS, large=True).pack(pady=(4, 0))
 
-        # ───────────────────────────────────────────────
-        # COLUMN B INPUT
-        # ───────────────────────────────────────────────
-        frame_B = tk.LabelFrame(self.scroll_frame, text="Column B — paste data", padx=10, pady=10)
-        frame_B.pack(fill="x", padx=15, pady=5)
+        # ── Status label ──────────────────────────────────────────────────────
+        self.label_status = tk.Label(sf, text="", font=("Segoe UI", 9),
+                                     fg=WARNING, bg=BG)
+        self.label_status.pack(pady=(4, 0))
 
-        tk.Label(frame_B, text="Paste two columns: retention time | peak width",
-                 fg="#555", font=("Arial", 9)).pack(anchor="w")
+        # ── Results ───────────────────────────────────────────────────────────
+        wrap, card = styled_label_frame(sf, "Results")
+        wrap.pack(pady=(8, 16), fill="x")
+        res_frame, self.text = scrollable_text(card, height=16)
+        self.text.config(state="disabled", padx=12, pady=10,
+                         font=("Segoe UI Mono", 9))
+        res_frame.pack(fill="both", expand=True, padx=14, pady=(0, 12))
+        self._enable_widget_scroll(self.text)
 
-        self.boxB = tk.Text(frame_B, height=5, font=("Courier", 10))
-        self.boxB.pack(fill="x", pady=5)
+        # Colour tags
+        self.text.tag_config("heading", foreground=ACCENT,  font=("Segoe UI", 10, "bold"))
+        self.text.tag_config("col_hdr", foreground=ACCENT2, font=("Segoe UI Mono", 9, "bold"))
+        self.text.tag_config("verdict", foreground=SUCCESS)
+        self.text.tag_config("warning", foreground=WARNING)
+        self.text.tag_config("muted",   foreground=TEXT_SEC)
 
-        # ───────────────────────────────────────────────
-        # PARSE BUTTON
-        # ───────────────────────────────────────────────
-        tk.Button(self.scroll_frame, text="Parse data", bg="#ffe082", width=20,
-                  command=self._parse_all).pack(pady=5)
-
-        # ───────────────────────────────────────────────
-        # PEAK SELECTION (ONE LISTBOX)
-        # ───────────────────────────────────────────────
-        frame_peaks = tk.LabelFrame(self.scroll_frame, text="Select peaks to compare", padx=10, pady=10)
-        frame_peaks.pack(fill="x", padx=15, pady=10)
-
-        tk.Label(frame_peaks, text="If no peak is selected, all peaks will be compared.",
-                 fg="#555", font=("Arial", 9)).pack(anchor="w")
-
-        self.listbox_peaks = tk.Listbox(frame_peaks, height=6, font=("Courier", 10),
-                                        bg="#f9f9f9", selectbackground="#90caf9",
-                                        selectmode="multiple")
-        self.listbox_peaks.pack(fill="x")
-
-        # ───────────────────────────────────────────────
-        # COMPARE BUTTON
-        # ───────────────────────────────────────────────
-        tk.Button(self.scroll_frame, text="Compare columns", bg="#c8e6c9",
-                  width=25, height=2,
-                  command=self._compare).pack(pady=10)
-
-        # ───────────────────────────────────────────────
-        # RESULTS (independent scroll)
-        # ───────────────────────────────────────────────
-        frame_res = tk.LabelFrame(self.scroll_frame, text="Results", padx=10, pady=10)
-        frame_res.pack(fill="both", expand=True, padx=15, pady=10)
-
-        self.text = tk.Text(frame_res, height=15, font=("Courier", 10), state="disabled")
-        self.text.pack(fill="both", expand=True)
-
-        # Scroll indépendant pour la zone résultats
-        self.text.bind("<Enter>", lambda e: self._activate_result_scroll())
-        self.text.bind("<Leave>", lambda e: self._deactivate_result_scroll())
-
-        self.label_status = tk.Label(self.scroll_frame, text="", fg="red")
-        self.label_status.pack()
-
-        # Internal storage
         self.columnA = {}
         self.columnB = {}
 
-    # ───────────────────────────────────────────────
-    # SCROLL FUNCTIONS
-    # ───────────────────────────────────────────────
-    def _on_mousewheel(self, event):
-        self.canvas.yview_scroll(int(-event.delta / 120), "units")
+    # ── Scroll management (LOCAL ONLY) ─────────────────────────────────────────
 
-    def _scroll_results(self, event):
-        self.text.yview_scroll(int(-event.delta / 120), "units")
+    def _scroll_delta(self, event):
+        if sys.platform == "darwin":
+            return -event.delta
+        return int(-event.delta / 120)
 
-    def _activate_result_scroll(self):
-        self.canvas.unbind_all("<MouseWheel>")
-        self.text.bind_all("<MouseWheel>", self._scroll_results)
+    def _enable_canvas_scroll(self):
+        self.canvas.bind("<MouseWheel>", lambda e: self.canvas.yview_scroll(self._scroll_delta(e), "units"))
+        self.canvas.bind("<Button-4>",   lambda e: self.canvas.yview_scroll(-1, "units"))
+        self.canvas.bind("<Button-5>",   lambda e: self.canvas.yview_scroll(1,  "units"))
+        self.canvas.bind("<Enter>", lambda e: self.canvas.focus_set())
 
-    def _deactivate_result_scroll(self):
-        self.text.unbind_all("<MouseWheel>")
-        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+    def _enable_widget_scroll(self, widget):
+        widget.bind("<MouseWheel>", lambda e: widget.yview_scroll(self._scroll_delta(e), "units"))
+        widget.bind("<Button-4>",   lambda e: widget.yview_scroll(-1, "units"))
+        widget.bind("<Button-5>",   lambda e: widget.yview_scroll(1,  "units"))
 
-    # ───────────────────────────────────────────────
-    # PARSING
-    # ───────────────────────────────────────────────
+    # ── Action button ──────────────────────────────────────────────────────────
+
+    def _make_action_btn(self, parent, text, cmd, color, large=False):
+        btn = tk.Label(parent, text=text, font=("Segoe UI", 10, "bold"),
+                       fg=BG, bg=color, cursor="hand2",
+                       padx=20, pady=10 if large else 7)
+        btn.bind("<Button-1>", lambda e: cmd())
+        btn.bind("<Enter>",    lambda e: btn.config(bg=self._lighten(color)))
+        btn.bind("<Leave>",    lambda e: btn.config(bg=color))
+        return btn
+
+    @staticmethod
+    def _lighten(hex_color):
+        r, g, b = int(hex_color[1:3], 16), int(hex_color[3:5], 16), int(hex_color[5:7], 16)
+        return f"#{min(255,r+30):02x}{min(255,g+30):02x}{min(255,b+30):02x}"
+
+    # ── Parsing ────────────────────────────────────────────────────────────────
+
     def _parse_box(self, box):
         raw = box.get("1.0", "end").strip()
-        peaks = {}
-        idx = 1
-
+        peaks, idx = {}, 1
         for line in raw.splitlines():
-            line = line.strip()
-            line = line.replace(",", ".")  # virgule décimale
-
-            parts = line.replace(";", "\t").split()
+            parts = line.strip().replace(",", ".").replace(";", "\t").split()
             if len(parts) < 2:
                 continue
-
             try:
-                tR = float(parts[0])
-                w = float(parts[1])
-                peaks[idx] = [tR, w]
+                peaks[idx] = [float(parts[0]), float(parts[1])]
                 idx += 1
-            except:
+            except Exception:
                 continue
-
         return peaks
 
     def _parse_all(self):
         self.columnA = self._parse_box(self.boxA)
         self.columnB = self._parse_box(self.boxB)
-
         self.listbox_peaks.delete(0, "end")
+        n = min(len(self.columnA), len(self.columnB))
+        for i in range(1, n + 1):
+            self.listbox_peaks.insert("end", f"  Peak {i}")
+        self.label_status.config(
+            text=f"✔  {n} peak{'s' if n != 1 else ''} detected.", fg=SUCCESS)
 
-        max_peaks = min(len(self.columnA), len(self.columnB))
+    # ── Comparison ─────────────────────────────────────────────────────────────
 
-        for i in range(1, max_peaks + 1):
-            self.listbox_peaks.insert("end", f"Peak {i}")
-
-        self.label_status.config(text=f"{max_peaks} peaks detected.")
-
-    # ───────────────────────────────────────────────
-    # COMPARISON
-    # ───────────────────────────────────────────────
     def _compare(self):
-
         selection = self.listbox_peaks.curselection()
-
-        if not selection:
-            selected_peaks = None
-            mode = "global"
-        else:
-            selected_peaks = [int(self.listbox_peaks.get(i).split()[1]) for i in selection]
-            mode = "subset"
+        selected_peaks = (
+            [int(self.listbox_peaks.get(i).split()[1]) for i in selection]
+            if selection else None
+        )
+        mode = "subset" if selected_peaks else "global"
 
         try:
             length = float(self.entry_length.get().replace(",", "."))
-        except:
+        except Exception:
             messagebox.showerror("Error", "Invalid column length.")
             return
 
         result = compare_two_columns_advanced(
-            columnA=self.columnA,
-            columnB=self.columnB,
-            column_length=length,
-            selected_peaks=selected_peaks,
-            mode=mode
-        )
+            columnA=self.columnA, columnB=self.columnB,
+            column_length=length, selected_peaks=selected_peaks, mode=mode)
 
         self.text.config(state="normal")
         self.text.delete("1.0", "end")
 
-        self.text.insert("end", "=== COMPARISON RESULTS ===\n\n")
+        self.text.insert("end", "COMPARISON RESULTS\n", "heading")
+        self.text.insert("end", "─" * 48 + "\n\n", "muted")
 
-        # VERDICT
+        self.text.insert("end", "VERDICT\n", "col_hdr")
         for key, winner in result["verdict"].items():
             param = key.replace("Best_", "").replace("_", " ").title()
-            self.text.insert("end", f"{param}: Column {winner}\n")
+            self.text.insert("end", f"  {param}: ", "muted")
+            self.text.insert("end", f"Column {winner}\n", "verdict")
 
-        # COLUMN A
-        self.text.insert("end", "\nColumn A:\n")
-        for k, v in result["A"].items():
-            self.text.insert("end", f"  {k}: {v}\n")
-
-        # WARNINGS A
-        if result["warnings"]["A"]:
-            self.text.insert("end", "\n  ⚠ Warnings for Column A:\n")
-            for msg in result["warnings"]["A"]:
-                self.text.insert("end", f"    - {msg}\n")
-
-        # COLUMN B
-        self.text.insert("end", "\nColumn B:\n")
-        for k, v in result["B"].items():
-            self.text.insert("end", f"  {k}: {v}\n")
-
-        # WARNINGS B
-        if result["warnings"]["B"]:
-            self.text.insert("end", "\n  ⚠ Warnings for Column B:\n")
-            for msg in result["warnings"]["B"]:
-                self.text.insert("end", f"    - {msg}\n")
+        for col, label in (("A", "COLUMN A"), ("B", "COLUMN B")):
+            self.text.insert("end", f"\n{label}\n", "col_hdr")
+            for k, v in result[col].items():
+                self.text.insert("end", f"  {k}: ", "muted")
+                self.text.insert("end", f"{v}\n")
+            if result["warnings"][col]:
+                self.text.insert("end", "\n  Warnings\n", "warning")
+                for msg in result["warnings"][col]:
+                    self.text.insert("end", f"    ⚠  {msg}\n", "warning")
 
         self.text.config(state="disabled")
-        self.label_status.config(text="Comparison complete.")
+        self.label_status.config(text="✔  Comparison complete.", fg=SUCCESS)

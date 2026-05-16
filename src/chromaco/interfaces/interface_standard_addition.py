@@ -1,117 +1,213 @@
-"""
-interface_ajouts_doses.py
--------------------------
-Tkinter interface for the standard addition method.
-"""
-
 import tkinter as tk
-from tkinter import messagebox
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+from tkinter import messagebox
 from chromaco.interfaces.fonctions_colonnes import plot_standard_addition
+
+BG       = "#0f1117"
+SURFACE  = "#1a1d27"
+SURFACE2 = "#20243a"
+BORDER   = "#2a2d3e"
+ACCENT   = "#4f9cf9"
+TEXT_PRI = "#e8eaf2"
+TEXT_SEC = "#7b80a0"
+SUCCESS  = "#68d391"
+WARNING  = "#f6ad55"
+DANGER   = "#f7706a"
+
+def _dpi_scale(win):
+    try:
+        scale = win.winfo_fpixels("1i") / 72
+        if scale > 1.25:
+            win.tk.call("tk", "scaling", scale)
+    except Exception:
+        pass
+
+def _section_label(parent, text):
+    tk.Label(parent, text=text.upper(), font=("Segoe UI", 8, "bold"),
+             fg=ACCENT, bg=BG).pack(anchor="w", pady=(0, 4))
+
+def _styled_entry(parent, width=14):
+    return tk.Entry(parent, width=width, font=("Segoe UI", 10),
+                    bg=SURFACE2, fg=TEXT_PRI, insertbackground=TEXT_PRI,
+                    relief="flat", highlightbackground=BORDER,
+                    highlightthickness=1, highlightcolor=ACCENT)
+
+def _action_btn(parent, text, cmd, color, large=False):
+    def lighten(h):
+        r,g,b = int(h[1:3],16), int(h[3:5],16), int(h[5:7],16)
+        return f"#{min(255,r+30):02x}{min(255,g+30):02x}{min(255,b+30):02x}"
+    btn = tk.Label(parent, text=text, font=("Segoe UI", 10, "bold"),
+                   fg=BG, bg=color, cursor="hand2",
+                   padx=20, pady=10 if large else 7)
+    btn.bind("<Button-1>", lambda e: cmd())
+    btn.bind("<Enter>",    lambda e: btn.config(bg=lighten(color)))
+    btn.bind("<Leave>",    lambda e: btn.config(bg=color))
+    return btn
+
+def _labelled_entry_row(parent, label_text, width=14):
+    row = tk.Frame(parent, bg=SURFACE)
+    row.pack(fill="x", padx=14, pady=6)
+    tk.Label(row, text=label_text, font=("Segoe UI", 10),
+             fg=TEXT_SEC, bg=SURFACE).pack(side="left", fill="x", expand=True)
+    e = _styled_entry(row, width=width)
+    e.pack(side="right")
+    return e
+
+def _scrollable_text(parent, height=5):
+    frame = tk.Frame(parent, bg=SURFACE2, highlightbackground=BORDER,
+                     highlightthickness=1)
+    sb = tk.Scrollbar(frame, orient="vertical")
+    sb.pack(side="right", fill="y")
+    t = tk.Text(frame, height=height, font=("Segoe UI Mono", 10),
+                bg=SURFACE2, fg=TEXT_PRI, insertbackground=TEXT_PRI,
+                relief="flat", highlightthickness=0,
+                selectbackground=ACCENT, selectforeground=BG,
+                wrap="none", padx=8, pady=6,
+                yscrollcommand=sb.set)
+    t.pack(side="left", fill="both", expand=True)
+    sb.config(command=t.yview)
+    return frame, t
+
+def _scrollable_listbox(parent, height=5):
+    frame = tk.Frame(parent, bg=SURFACE2, highlightbackground=BORDER,
+                     highlightthickness=1)
+    sb = tk.Scrollbar(frame, orient="vertical")
+    sb.pack(side="right", fill="y")
+    lb = tk.Listbox(frame, height=height, font=("Segoe UI Mono", 10),
+                    bg=SURFACE2, fg=TEXT_PRI,
+                    selectbackground=ACCENT, selectforeground=BG,
+                    relief="flat", highlightthickness=0,
+                    activestyle="none", selectmode="single",
+                    borderwidth=0, yscrollcommand=sb.set)
+    lb.pack(side="left", fill="both", expand=True)
+    sb.config(command=lb.yview)
+    return frame, lb
 
 
 class InterfaceAjoutsDoses:
     def __init__(self, parent):
 
         self.fenetre = tk.Toplevel(parent)
-        self.fenetre.title("Standard addition method")
-        self.fenetre.geometry("620x700")
-        self.fenetre.resizable(False, True)
+        self.fenetre.title("Standard Addition Method")
+        self.fenetre.geometry("620x780")
+        self.fenetre.resizable(True, True)
+        self.fenetre.config(bg=BG)
+        _dpi_scale(self.fenetre)
 
-        # ── Manual input section ───────────────────────────────────────────────
-        frame_manual = tk.LabelFrame(self.fenetre, text="Manual input", padx=10, pady=10)
-        frame_manual.pack(fill="x", padx=15, pady=10)
+        hdr = tk.Frame(self.fenetre, bg=BG)
+        hdr.pack(fill="x", padx=28, pady=(24, 0))
+        tk.Label(hdr, text="C H R O M A C O", font=("Segoe UI", 8, "bold"),
+                 fg=ACCENT, bg=BG).pack(anchor="w")
+        tk.Label(hdr, text="Standard Addition Method",
+                 font=("Segoe UI", 20, "bold"), fg=TEXT_PRI, bg=BG).pack(anchor="w")
+        tk.Label(hdr, text="y = a·x + b  →  C_unknown = −b / a",
+                 font=("Segoe UI", 9), fg=TEXT_SEC, bg=BG).pack(anchor="w")
+        tk.Frame(self.fenetre, bg=ACCENT, height=2).pack(fill="x", padx=28, pady=(12, 0))
 
-        tk.Label(frame_manual,
-                 text="Enter each point manually (concentration added + area),\n"
-                      "then click 'Add point'. Include the blank (concentration = 0).",
-                 font=("Arial", 9), fg="#555555", justify="left").grid(
-            row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
+        scroll_outer = tk.Frame(self.fenetre, bg=BG)
+        scroll_outer.pack(fill="both", expand=True, padx=28, pady=(14, 0))
 
-        tk.Label(frame_manual, text="Concentration added:").grid(row=1, column=0, sticky="w", pady=3)
-        self.entry_conc = tk.Entry(frame_manual, width=14)
-        self.entry_conc.grid(row=1, column=1, padx=8)
+        self._canvas = tk.Canvas(scroll_outer, bg=BG, highlightthickness=0, bd=0)
+        gsb = tk.Scrollbar(scroll_outer, orient="vertical", command=self._canvas.yview)
+        self._canvas.configure(yscrollcommand=gsb.set)
+        gsb.pack(side="right", fill="y")
+        self._canvas.pack(side="left", fill="both", expand=True)
 
-        tk.Label(frame_manual, text="Peak area:").grid(row=2, column=0, sticky="w", pady=3)
-        self.entry_area = tk.Entry(frame_manual, width=14)
-        self.entry_area.grid(row=2, column=1, padx=8)
+        sf = tk.Frame(self._canvas, bg=BG)
+        self._sf_win = self._canvas.create_window((0, 0), window=sf, anchor="nw")
+        sf.bind("<Configure>", lambda e: self._canvas.configure(scrollregion=self._canvas.bbox("all")))
+        self._canvas.bind("<Configure>", lambda e: self._canvas.itemconfig(self._sf_win, width=e.width))
 
-        frm_btns = tk.Frame(frame_manual)
-        frm_btns.grid(row=3, column=0, columnspan=3, pady=6)
-        tk.Button(frm_btns, text="Add point", bg="#ffe082", width=12,
-                  command=self._add_manual_point).pack(side="left", padx=4)
-        tk.Button(frm_btns, text="Remove last", bg="#ffcdd2", width=12,
-                  command=self._remove_last_point).pack(side="left", padx=4)
-        tk.Button(frm_btns, text="Clear all", bg="#ffcdd2", width=10,
-                  command=self._clear_all).pack(side="left", padx=4)
+        self._canvas.bind("<MouseWheel>", lambda e: self._canvas.yview_scroll(int(-e.delta/120), "units"))
+        self._canvas.bind("<Button-4>",   lambda e: self._canvas.yview_scroll(-1, "units"))
+        self._canvas.bind("<Button-5>",   lambda e: self._canvas.yview_scroll(1,  "units"))
+        self._canvas.bind("<Enter>", lambda e: self._canvas.focus_set())
 
-        # ── Unit input ─────────────────────────────────────────────────────────
-        frame_unit = tk.LabelFrame(self.fenetre, text="Units", padx=10, pady=10)
-        frame_unit.pack(fill="x", padx=15, pady=(0, 5))
+        PAD = {"padx": 0, "pady": 8, "fill": "x"}
 
-        tk.Label(frame_unit, text="Concentration unit:").grid(row=0, column=0, sticky="w")
-        self.entry_unit = tk.Entry(frame_unit, width=10)
-        self.entry_unit.grid(row=0, column=1, padx=8)
+        wrap = tk.Frame(sf, bg=BG)
+        wrap.pack(**PAD)
+        _section_label(wrap, "Manual Input")
+        card = tk.Frame(wrap, bg=SURFACE, highlightbackground=BORDER, highlightthickness=1)
+        card.pack(fill="x")
+
+        self.entry_conc = _labelled_entry_row(card, "Concentration added")
+        self.entry_area = _labelled_entry_row(card, "Peak area")
+
+        tk.Frame(card, bg=BORDER, height=1).pack(fill="x", padx=14)
+        btn_row = tk.Frame(card, bg=SURFACE)
+        btn_row.pack(fill="x", padx=14, pady=12)
+
+        _action_btn(btn_row, "  Add Point", self._add_manual_point, WARNING).pack(side="left")
+        _action_btn(btn_row, "  Remove Last", self._remove_last_point, DANGER).pack(side="left", padx=6)
+        _action_btn(btn_row, "  Clear All", self._clear_all, DANGER).pack(side="left")
+
+        tk.Frame(card, bg=BORDER, height=1).pack(fill="x", padx=14)
+
+        wrap_units = tk.Frame(sf, bg=BG)
+        wrap_units.pack(**PAD)
+        _section_label(wrap_units, "Units")
+        card_units = tk.Frame(wrap_units, bg=SURFACE, highlightbackground=BORDER, highlightthickness=1)
+        card_units.pack(fill="x")
+
+        self.entry_unit = _labelled_entry_row(card_units, "Concentration unit")
         self.entry_unit.insert(0, "mg/L")
 
-        # ── Excel paste section ────────────────────────────────────────────────
-        frame_excel = tk.LabelFrame(self.fenetre, text="Paste from Excel", padx=10, pady=10)
-        frame_excel.pack(fill="x", padx=15, pady=(0, 5))
+        wrap2 = tk.Frame(sf, bg=BG)
+        wrap2.pack(**PAD)
+        _section_label(wrap2, "Paste from Excel")
+        card2 = tk.Frame(wrap2, bg=SURFACE, highlightbackground=BORDER, highlightthickness=1)
+        card2.pack(fill="x")
 
-        tk.Label(frame_excel,
-                 text="Paste your Excel data (two columns: concentration added | peak area).\n"
-                      "Include the blank row (concentration = 0).",
-                 justify="left", fg="#555555", font=("Arial", 9)).pack(anchor="w")
+        tk.Label(card2,
+                 text="Paste two columns: concentration added | peak area\nInclude the blank row (concentration = 0).",
+                 font=("Segoe UI", 9), fg=TEXT_SEC, bg=SURFACE).pack(anchor="w", padx=14, pady=(10,4))
 
-        self.text_paste = tk.Text(frame_excel, height=4, font=("Courier", 10))
-        self.text_paste.pack(fill="x", pady=5)
+        tk.Frame(card2, bg=BORDER, height=1).pack(fill="x", padx=14, pady=(4,0))
+
+        tk.Label(card2, text="Paste area", font=("Segoe UI", 8),
+                 fg=TEXT_SEC, bg=SURFACE).pack(anchor="w", padx=14, pady=(8, 2))
+        paste_frame, self.text_paste = _scrollable_text(card2, height=5)
+        paste_frame.pack(fill="x", padx=14, pady=(0, 6))
+
+        self.text_paste.bind("<MouseWheel>", lambda e: self.text_paste.yview_scroll(int(-e.delta/120), "units"))
+        self.text_paste.bind("<Button-4>",   lambda e: self.text_paste.yview_scroll(-1, "units"))
+        self.text_paste.bind("<Button-5>",   lambda e: self.text_paste.yview_scroll(1,  "units"))
+
         self.text_paste.bind("<Control-v>", self._on_paste)
-        self.text_paste.bind("<<Paste>>", self._on_paste)
+        self.text_paste.bind("<<Paste>>",   self._on_paste)
 
-        tk.Button(frame_excel, text="Parse data", bg="#ffe082", width=12,
-                  command=self._parse_paste).pack(pady=(0, 5))
+        parse_row = tk.Frame(card2, bg=SURFACE)
+        parse_row.pack(fill="x", padx=14, pady=(0, 10))
+        _action_btn(parse_row, "  Parse Data", self._parse_paste, WARNING).pack(side="left")
 
-        # ── Data table ────────────────────────────────────────────────────────
-        frame_table = tk.LabelFrame(self.fenetre, text="Data points", padx=10, pady=6)
-        frame_table.pack(fill="x", padx=15, pady=(0, 5))
+        tk.Frame(card2, bg=BORDER, height=1).pack(fill="x", padx=14)
 
-        frm_header = tk.Frame(frame_table, bg="#e3f2fd")
-        frm_header.pack(fill="x")
-        tk.Label(frm_header, text=f"{'#':>4}  {'Concentration added':>22}  {'Peak area':>16}",
-                 font=("Courier", 10, "bold"), bg="#e3f2fd").pack(anchor="w", padx=4)
+        tk.Label(card2, text="Data points", font=("Segoe UI", 8),
+                 fg=TEXT_SEC, bg=SURFACE).pack(anchor="w", padx=14, pady=(8,2))
+        list_frame, self.listbox = _scrollable_listbox(card2, height=6)
+        list_frame.pack(fill="x", padx=14, pady=(0,12))
 
-        frm_list = tk.Frame(frame_table)
-        frm_list.pack(fill="x")
-        scrollbar = tk.Scrollbar(frm_list, orient="vertical")
-        self.listbox = tk.Listbox(frm_list, height=6, font=("Courier", 10),
-                                  yscrollcommand=scrollbar.set,
-                                  bg="#f9f9f9", selectbackground="#90caf9")
-        scrollbar.config(command=self.listbox.yview)
-        scrollbar.pack(side="right", fill="y")
-        self.listbox.pack(side="left", fill="x", expand=True)
+        self.listbox.bind("<MouseWheel>", lambda e: self.listbox.yview_scroll(int(-e.delta/120), "units"))
+        self.listbox.bind("<Button-4>",   lambda e: self.listbox.yview_scroll(-1, "units"))
+        self.listbox.bind("<Button-5>",   lambda e: self.listbox.yview_scroll(1,  "units"))
 
         self._points = []
 
-        # ── Calculate button ───────────────────────────────────────────────────
-        tk.Button(self.fenetre,
-                  text="Calculate unknown concentration + show plot",
-                  bg="#c8e6c9", width=42, height=2,
-                  command=self._calculate).pack(pady=8)
+        _action_btn(sf, "  Calculate Unknown Concentration", self._calculate, SUCCESS, large=True).pack(pady=(4, 0))
 
-        # ── Result display ─────────────────────────────────────────────────────
-        self.label_resultat = tk.Label(self.fenetre, text="", font=("Arial", 12, "bold"))
-        self.label_resultat.pack(pady=4)
+        self.label_resultat = tk.Label(sf, text="", font=("Segoe UI", 11, "bold"),
+                                       fg=SUCCESS, bg=BG)
+        self.label_resultat.pack(pady=(10, 0))
 
-        self.label_details = tk.Label(self.fenetre, text="", font=("Arial", 10), fg="#444444")
+        self.label_details = tk.Label(sf, text="", font=("Segoe UI", 9),
+                                      fg=TEXT_SEC, bg=BG)
         self.label_details.pack()
 
-        self.label_erreur = tk.Label(self.fenetre, text="", fg="red")
-        self.label_erreur.pack()
-
-    # ── Point management ──────────────────────────────────────────────────────
+        self.label_erreur = tk.Label(sf, text="", font=("Segoe UI", 9),
+                                     fg=DANGER, bg=BG)
+        self.label_erreur.pack(pady=(2,16))
 
     def _add_manual_point(self):
         try:
@@ -141,10 +237,7 @@ class InterfaceAjoutsDoses:
     def _refresh_listbox(self):
         self.listbox.delete(0, "end")
         for i, (c, a) in enumerate(self._points):
-            self.listbox.insert("end",
-                f"  {i+1:>2}.   {c:>20.4f}   {a:>16.4f}")
-
-    # ── Paste handler ──────────────────────────────────────────────────────────
+            self.listbox.insert("end", f"  {i+1:>2}.   {c:>20.4f}   {a:>16.4f}")
 
     def _on_paste(self, event=None):
         self.fenetre.after(100, self._parse_paste)
@@ -157,9 +250,6 @@ class InterfaceAjoutsDoses:
 
         new_points = []
         for line in raw.splitlines():
-            line = line.strip()
-            if not line:
-                continue
             parts = line.replace(";", "\t").split("\t")
             if len(parts) < 2:
                 parts = line.split()
@@ -173,24 +263,16 @@ class InterfaceAjoutsDoses:
                 continue
 
         if not new_points:
-            self.label_erreur.config(
-                text="No valid rows found. Make sure data has two numeric columns.")
+            self.label_erreur.config(text="No valid rows found.")
             return
 
         self._points = new_points
         self._refresh_listbox()
-        self.label_erreur.config(
-            text=f"{len(self._points)} point(s) loaded successfully.")
-
-    # ── Calculation ────────────────────────────────────────────────────────────
+        self.label_erreur.config(text=f"{len(self._points)} point(s) loaded successfully.")
 
     def _calculate(self):
         if len(self._points) < 2:
-            messagebox.showwarning(
-                "Not enough points",
-                "Please enter at least 2 data points.",
-                parent=self.fenetre
-            )
+            messagebox.showwarning("Not enough points", "Please enter at least 2 data points.", parent=self.fenetre)
             return
 
         concentrations = [p[0] for p in self._points]
@@ -198,7 +280,6 @@ class InterfaceAjoutsDoses:
         unit = self.entry_unit.get().strip()
 
         try:
-            # Compute only (NO PLOT)
             result = plot_standard_addition(concentrations, areas, show_plot=False)
         except ValueError as e:
             self.label_erreur.config(text=str(e))
@@ -213,12 +294,8 @@ class InterfaceAjoutsDoses:
 
         sign = "+" if b >= 0 else "-"
 
-        # Show result BEFORE plot
-        self.label_resultat.config(text=f"Concentration of analyte in solution: {C:.6f} {unit}")
-        self.label_details.config(
-            text=f"y = {a:.4f}x {sign} {abs(b):.4f}    R² = {r2:.4f}"
-        )
+        self.label_resultat.config(text=f"Unknown concentration: {C:.6f} {unit}")
+        self.label_details.config(text=f"y = {a:.4f}x {sign} {abs(b):.4f}    R² = {r2:.4f}")
         self.label_erreur.config(text="")
 
-        # Show the plot ONCE
         plot_standard_addition(concentrations, areas, show_plot=True)
