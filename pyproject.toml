@@ -8,7 +8,10 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = {file = "LICENSE"}
 description = "Calculator of chromatography"
-dependencies = []
+dependencies = [
+    "numpy",
+    "matplotlib",
+    ]
 authors = [
     {name = "Mathéo Berger", email = "matheo.berger@epfl.ch"}
 ]
@@ -28,13 +31,13 @@ source = "https://github.com/MathBerg1/ChromaCo"
 tracker = "https://github.com/MathBerg1/ChromaCo/issues"
 
 [project.optional-dependencies]
+chem = ["rdkit-pypi"]
 test = ["hypothesis", "pytest", "pytest-cov", "tox", "genbadge[coverage]"]
 doc = ["furo", "myst-parser", "sphinx>=5", "sphinx-copybutton"]
 
 [tool.hatch.version]
 path = "src/chromaco/__init__.py"
 
-# 🔥 IMPORTANT : dire à Hatch où est ton package
 [tool.hatch.build]
 packages = ["src/chromaco"]
 
@@ -52,3 +55,7 @@ omit = ['__init__.py']
 
 [tool.coverage.report]
 exclude_also = ["if __name__ == .__main__.:"]
+
+[project.scripts]
+run-chromaco = "chromaco.interfaces.interface_entree:main"
+

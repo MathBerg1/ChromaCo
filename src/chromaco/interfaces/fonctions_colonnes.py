@@ -541,8 +541,9 @@ def plot_standard_addition(concentrations, areas, show_plot=True):
 
     # --- Regression ---
     a, b = np.polyfit(X, Y, 1)
-    if a == 0:
+    if abs(a) < 1e-12:
         raise ValueError("Slope is zero, cannot compute intercept.")
+
 
     Y_pred = a * X + b
 
@@ -643,109 +644,46 @@ def calculate_net_retention_times(all_retention_times: list[float], alkane_data:
         
     return net_times
 
-def calculate_selectivity_factor(brut_retention_times: dict[int, float], index: int) -> float:
+def calculate_selectivity_factor(t_r1: float, t_r2: float, t_0: float) -> float:
     """
-    Calculates the selectivity factor (alpha) between peak 'n' and peak 'n+1'.
-    
-    Logic:
-    1. Identifies consecutive integer keys in the dictionary to treat them as n-alkanes for dead time calculation.
-    2. Calculates net retention times for all peaks.
-    3. Locates the specific pair (index, index+1) in the sorted list.
-    4. Returns the single alpha value for this pair.
-    
-    Args:
-        brut_retention_times (dict[int, float]): Dictionary {peak_index: brut_retention_time}.
-                                                  Must contain at least 3 consecutive integer keys 
-                                                  (to serve as alkanes for tM calculation).
-        index (int): The index 'n' of the first peak in the pair. 
-                     The function will calculate alpha between peak 'n' and peak 'n+1'.
-        
-    Returns:
-        float: The selectivity factor (alpha) between peak 'n' and 'n+1'.
-        
-    Raises:
-        ValueError: If the index is not found, if 'index+1' is not found, 
-                    if insufficient data exists for dead time, or if net times are invalid.
+    Calculates the selectivity factor (alpha) between two peaks.
+
+    The selectivity factor alpha expresses the relative retention of two analytes:
+
+        alpha = k2 / k1
+
+    where k1 and k2 are the retention factors of peak 1 and peak 2, calculated via
+    calculate_retention_factor(). By convention, alpha >= 1, so the function always
+    divides the larger k by the smaller one.
+
+    Parameters
+    ----------
+    t_r1 : float
+        Retention time of the first peak.
+    t_r2 : float
+        Retention time of the second peak.
+    t_0 : float
+        Dead time / void time of the column.
+
+    Returns
+    -------
+    float
+        The selectivity factor alpha (always >= 1).
+
+    Raises
+    ------
+    ValueError
+        Propagated from calculate_retention_factor() if any time value is
+        invalid (None, non-numeric, non-positive, or t_r <= t_0).
     """
-    if len(brut_retention_times) < 2:
-        raise ValueError("At least 2 peaks are required in the dictionary.")
+    k1 = calculate_retention_factor(t_r1, t_0)
+    k2 = calculate_retention_factor(t_r2, t_0)
 
-    if index not in brut_retention_times:
-        raise ValueError(f"Peak index {index} not found in the dictionary.")
-    
-    # We need to find the successor in the elution order, not just index+1 numerically,
-    # UNLESS the user implies the keys represent the elution order directly.
-    # Based on previous context, keys are sorted to determine elution order.
-    # So we find where 'index' sits in the sorted list, and take the next one.
-    
-    sorted_indices = sorted(brut_retention_times.keys())
-    
-    try:
-        pos_n = sorted_indices.index(index)
-    except ValueError:
-        # Should be caught by the check above, but double safety
-        raise ValueError(f"Peak index {index} not found in sorted list.")
-
-    if pos_n + 1 >= len(sorted_indices):
-        raise ValueError(f"No peak found after index {index}. Cannot calculate selectivity for the last peak.")
-
-    index_next = sorted_indices[pos_n + 1]
-
-    # 1. Identify Alkanes for Dead Time Calculation (Same logic as before)
-    alkane_data = {}
-    consecutive_sequences = []
-    current_seq = []
-    
-    for i, idx in enumerate(sorted_indices):
-        if not current_seq:
-            current_seq = [idx]
-        else:
-            if idx == current_seq[-1] + 1:
-                current_seq.append(idx)
-            else:
-                if len(current_seq) >= 3:
-                    consecutive_sequences.append(current_seq)
-                current_seq = [idx]
-        if i == len(sorted_indices) - 1 and len(current_seq) >= 3:
-            consecutive_sequences.append(current_seq)
-
-    if not consecutive_sequences:
-        raise ValueError(
-            "Could not find at least 3 consecutive integer keys to calculate dead time. "
-            "Ensure the dictionary contains n-alkanes labeled with consecutive integers."
-        )
-    
-    alkane_indices = consecutive_sequences[0]
-    alkane_data = {idx: brut_retention_times[idx] for idx in alkane_indices}
-
-    # 2. Calculate Net Retention Times for ALL peaks
-    all_brut_times = [brut_retention_times[i] for i in sorted_indices]
-    
-    try:
-        net_times = calculate_net_retention_times(
-            all_retention_times=all_brut_times,
-            alkane_data=alkane_data
-        )
-    except ValueError as e:
-        raise ValueError(f"Failed to calculate net retention times: {e}")
-
-    # 3. Extract specific pair and calculate alpha
-    t_net_1 = net_times[pos_n]       # Net time for peak 'n'
-    t_net_2 = net_times[pos_n + 1]   # Net time for peak 'n+1' (in elution order)
-
-    if t_net_1 <= 0 or t_net_2 <= 0:
-        raise ValueError(
-            f"Cannot calculate alpha for indices ({index}, {index_next}): "
-            f"Net retention times must be positive (t1={t_net_1:.4f}, t2={t_net_2:.4f})."
-        )
-
-    # alpha = tR'(2) / tR'(1). Ensure alpha >= 1.
-    if t_net_2 >= t_net_1:
-        alpha = t_net_2 / t_net_1
+    # Convention : alpha >= 1
+    if k2 >= k1:
+        return k2 / k1
     else:
-        alpha = t_net_1 / t_net_2
-        
-    return alpha
+        return k1 / k2
 
 import textwrap
 

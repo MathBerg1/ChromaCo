@@ -162,7 +162,6 @@ canvas.bind("<Button-5>",   lambda e: canvas.yview_scroll(1,  "units"))
 # give focus to canvas when mouse enters
 canvas.bind("<Enter>", lambda e: canvas.focus_set())
 
-# ❗ NO redirect_wheel, NO global scroll binding
 
 # ── Buttons ────────────────────────────────────────────────────────────────────
 for cfg in BUTTONS:
@@ -183,3 +182,12 @@ exit_btn.bind("<Enter>",    lambda e: exit_btn.config(fg="#ff9e9b"))
 exit_btn.bind("<Leave>",    lambda e: exit_btn.config(fg=DANGER))
 
 root.mainloop()
+
+def main():
+    global root
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    main()
+

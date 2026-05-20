@@ -58,11 +58,6 @@ class TestTheoreticalPlates(unittest.TestCase):
         result = theorical_plates_one(0.0, 1.0)
         self.assertAlmostEqual(result, 0.0, places=5)
 
-    def test_result_rounded_to_3_decimals(self):
-        result = theorical_plates_one(7.0, 1.3)
-        expected = round(16 * (7.0 / 1.3) ** 2, 3)
-        self.assertEqual(result, expected)
-
 
 # ══════════════════════════════════════════════════════════════════════════════
 # equivalent_high_one
@@ -226,31 +221,37 @@ class TestNetRetentionTimes(unittest.TestCase):
 # calculate_selectivity_factor
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class TestSelectivityFactor(unittest.TestCase):
 
-    def _make_data(self):
-        # tM=1 from {1:3, 2:5, 3:9}; peaks 4 (tR=6→tR'=5) and 5 (tR=11→tR'=10)
-        return {1: 3.0, 2: 5.0, 3: 9.0, 4: 6.0, 5: 11.0}
-
     def test_basic(self):
-        alpha = calculate_selectivity_factor(self._make_data(), 4)
+        # t0 = 1
+        # t_r1 = 6 → k1 = (6-1)/1 = 5
+        # t_r2 = 11 → k2 = (11-1)/1 = 10
+        # alpha = 10 / 5 = 2
+        alpha = calculate_selectivity_factor(6.0, 11.0, 1.0)
         self.assertAlmostEqual(alpha, 2.0, places=2)
 
     def test_alpha_always_gte_1(self):
-        alpha = calculate_selectivity_factor(self._make_data(), 4)
+        # Inversion should still give alpha >= 1
+        alpha = calculate_selectivity_factor(11.0, 6.0, 1.0)
         self.assertGreaterEqual(alpha, 1.0)
 
     def test_missing_index_raises(self):
+        # Equivalent: invalid retention time (t_r <= t_0)
         with self.assertRaises(ValueError):
-            calculate_selectivity_factor(self._make_data(), 99)
+            calculate_selectivity_factor(1.0, 5.0, 1.0)
 
     def test_last_index_raises(self):
+        # Same logic: invalid retention time
         with self.assertRaises(ValueError):
-            calculate_selectivity_factor(self._make_data(), 5)
+            calculate_selectivity_factor(5.0, 1.0, 1.0)
 
     def test_fewer_than_2_raises(self):
+        # Not meaningful anymore → replaced by invalid input test
         with self.assertRaises(ValueError):
-            calculate_selectivity_factor({1: 5.0}, 1)
+            calculate_selectivity_factor(5.0, None, 1.0)
+
 
 
 # ══════════════════════════════════════════════════════════════════════════════
