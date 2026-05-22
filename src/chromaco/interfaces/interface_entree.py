@@ -18,6 +18,8 @@ from chromaco.interfaces.interface_standard_addition import InterfaceAjoutsDoses
 from chromaco.interfaces.interface_elut_ord import InterfaceElution
 from chromaco.interfaces.interface_retfac import InterfaceRetentionFactor
 from chromaco.interfaces.interface_comparison import InterfaceCompareColumns
+from chromaco.interfaces.interface_selectfact import InterfaceSelectivity
+from chromaco.interfaces.interface_craig import InterfaceCraigBattery
 
 
 # ── Colour tokens ──────────────────────────────────────────────────────────────
@@ -38,6 +40,8 @@ BUTTONS = [
     {"label": "Standard Addition",       "sub": "Spike / quantification",  "icon": "+", "command": lambda: InterfaceAjoutsDoses(root),     "accent": "#f6ad55"},
     {"label": "Retention Factor",        "sub": "k′ calculation",          "icon": "k", "command": lambda: InterfaceRetentionFactor(root), "accent": "#fc8181"},
     {"label": "Compare Columns",         "sub": "Side-by-side analysis",   "icon": "⇌", "command": lambda: InterfaceCompareColumns(root),  "accent": "#b794f4"},
+    {"label": "Selectivity Factor",         "sub": "Peak identification",   "icon": "α", "command": lambda: InterfaceSelectivity(root),  "accent": "#e794f4"},
+    {"label": "Craig Batteries",         "sub": "Simulation of batteries",   "icon": "🔋", "command": lambda: InterfaceCraigBattery(root),  "accent": "#f494b9"}
 ]
 
 
