@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
+from chromaco.interfaces.fonctions_colonnes import calculate_selectivity_factor, calculate_retention_factor
 
 # ── Palette (identical to InterfaceHauteur) ──────────────────────────────────
 BG       = "#0f1117"
@@ -14,7 +15,7 @@ WARNING  = "#f6ad55"
 DANGER   = "#f7706a"
 
 
-# ── Helpers (copied verbatim from the shared UI toolkit) ─────────────────────
+# ── Helpers ─────────────────────
 
 def _dpi_scale(win):
     try:
@@ -92,30 +93,15 @@ def _scrollable_listbox(parent, height=5):
     return frame, lb
 
 
-# ── Business logic ────────────────────────────────────────────────────────────
-
-def calculate_retention_factor(t_r: float, t_0: float) -> float:
-    if t_r is None or t_0 is None:
-        raise ValueError("Retention time and dead time must not be None.")
-    if not (isinstance(t_r, (int, float)) and isinstance(t_0, (int, float))):
-        raise ValueError("All time values must be numeric.")
-    if t_0 <= 0:
-        raise ValueError("Dead time t₀ must be strictly positive.")
-    if t_r <= 0:
-        raise ValueError("Retention time must be strictly positive.")
-    if t_r <= t_0:
-        raise ValueError("Retention time t_r must be greater than dead time t₀.")
-    return (t_r - t_0) / t_0
-
-
-def calculate_selectivity_factor(t_r1: float, t_r2: float, t_0: float) -> float:
-    k1 = calculate_retention_factor(t_r1, t_0)
-    k2 = calculate_retention_factor(t_r2, t_0)
-    if k2 >= k1:
-        return k2 / k1
-    else:
-        return k1 / k2
-
+def _back_button_to_menu(win, label="← Back to menu"):
+    bar = tk.Frame(win, bg=BG)
+    bar.pack(fill="x", padx=28, pady=(8, 0))
+    btn = tk.Label(bar, text=label, font=("Segoe UI", 9),
+                   fg=TEXT_SEC, bg=BG, cursor="hand2")
+    btn.pack(side="right")
+    btn.bind("<Button-1>", lambda e: win.destroy())
+    btn.bind("<Enter>",    lambda e: btn.config(fg=TEXT_PRI))
+    btn.bind("<Leave>",    lambda e: btn.config(fg=TEXT_SEC))
 
 # ── Main interface ────────────────────────────────────────────────────────────
 
@@ -126,6 +112,7 @@ class InterfaceSelectivity:
         self.fenetre.geometry("650x820")
         self.fenetre.resizable(True, True)
         self.fenetre.config(bg=BG)
+        _back_button_to_menu(self.fenetre)
         _dpi_scale(self.fenetre)
 
         # ── Header ────────────────────────────────────────────────────────────

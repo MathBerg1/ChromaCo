@@ -70,13 +70,25 @@ def scrollable_listbox(parent, height=6):
     return frame, lb
 
 
+def _back_button_to_menu(win, label="← Back to menu"):
+    bar = tk.Frame(win, bg=BG)
+    bar.pack(fill="x", padx=28, pady=(8, 0))
+    btn = tk.Label(bar, text=label, font=("Segoe UI", 9),
+                   fg=TEXT_SEC, bg=BG, cursor="hand2")
+    btn.pack(side="right")
+    btn.bind("<Button-1>", lambda e: win.destroy())
+    btn.bind("<Enter>",    lambda e: btn.config(fg=TEXT_PRI))
+    btn.bind("<Leave>",    lambda e: btn.config(fg=TEXT_SEC))
+
+
 # ───────────────────────────────────────────────────────────────────────────────
-#                           INTERFACE COMPARE COLUMNS (FIXED)
+#                           INTERFACE COMPARE COLUMNS
 # ───────────────────────────────────────────────────────────────────────────────
 
 class InterfaceCompareColumns:
     def __init__(self, parent):
         self.fenetre = tk.Toplevel(parent)
+        _back_button_to_menu(self.fenetre)
         self.fenetre.title("Compare Columns")
         self.fenetre.geometry("700x760")
         self.fenetre.resizable(True, True)
@@ -101,7 +113,7 @@ class InterfaceCompareColumns:
                  font=("Segoe UI", 9), fg=TEXT_SEC, bg=BG).pack(anchor="w")
         tk.Frame(self.fenetre, bg=ACCENT, height=2).pack(fill="x", padx=28, pady=(12, 0))
 
-        # ── Scrollable canvas (LOCAL SCROLL ONLY) ─────────────────────────────
+        # ── Scrollable canvas ─────────────────────────────────────────────────
         scroll_outer = tk.Frame(self.fenetre, bg=BG)
         scroll_outer.pack(fill="both", expand=True, padx=28, pady=(14, 0))
 
@@ -119,7 +131,6 @@ class InterfaceCompareColumns:
         self.canvas.bind("<Configure>", lambda e: self.canvas.itemconfig(
             self._sf_win, width=e.width))
 
-        # ENABLE LOCAL SCROLL
         self._enable_canvas_scroll()
 
         PAD = {"padx": 0, "pady": 8, "fill": "x"}
@@ -181,7 +192,6 @@ class InterfaceCompareColumns:
         res_frame.pack(fill="both", expand=True, padx=14, pady=(0, 12))
         self._enable_widget_scroll(self.text)
 
-        # Colour tags
         self.text.tag_config("heading", foreground=ACCENT,  font=("Segoe UI", 10, "bold"))
         self.text.tag_config("col_hdr", foreground=ACCENT2, font=("Segoe UI Mono", 9, "bold"))
         self.text.tag_config("verdict", foreground=SUCCESS)
@@ -191,7 +201,7 @@ class InterfaceCompareColumns:
         self.columnA = {}
         self.columnB = {}
 
-    # ── Scroll management (LOCAL ONLY) ─────────────────────────────────────────
+    # ── Scroll management ──────────────────────────────────────────────────────
 
     def _scroll_delta(self, event):
         if sys.platform == "darwin":

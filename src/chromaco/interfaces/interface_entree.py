@@ -14,12 +14,13 @@ if sys.platform == "win32":
 from chromaco.interfaces.interface_hauteur_equivalente import InterfaceHauteur
 from chromaco.interfaces.interface_nb_de_plateau import InterfacePlateau
 from chromaco.interfaces.interface_resolution_two_peaks import InterfaceResolution
-from chromaco.interfaces.interface_standard_addition import InterfaceAjoutsDoses
+from chromaco.interfaces.interface_standard_addition import StandardAdditionInterface
 from chromaco.interfaces.interface_elut_ord import InterfaceElution
 from chromaco.interfaces.interface_retfac import InterfaceRetentionFactor
 from chromaco.interfaces.interface_comparison import InterfaceCompareColumns
 from chromaco.interfaces.interface_selectfact import InterfaceSelectivity
-from chromaco.interfaces.interface_craig import InterfaceCraigBattery
+from chromaco.interfaces.interface_kovats import *
+
 
 
 # ── Colour tokens ──────────────────────────────────────────────────────────────
@@ -41,7 +42,7 @@ BUTTONS = [
     {"label": "Retention Factor",        "sub": "k′ calculation",          "icon": "k", "command": lambda: InterfaceRetentionFactor(root), "accent": "#fc8181"},
     {"label": "Compare Columns",         "sub": "Side-by-side analysis",   "icon": "⇌", "command": lambda: InterfaceCompareColumns(root),  "accent": "#b794f4"},
     {"label": "Selectivity Factor",         "sub": "Peak identification",   "icon": "α", "command": lambda: InterfaceSelectivity(root),  "accent": "#e794f4"},
-    {"label": "Craig Batteries",         "sub": "Simulation of batteries",   "icon": "🔋", "command": lambda: InterfaceCraigBattery(root),  "accent": "#f494b9"}
+    {"label": "Kovats Method",         "sub": "Kovats Index and dead time",   "icon": "I", "command": lambda: KovatsSelector(root),  "accent": "#f49494"}
 ]
 
 
