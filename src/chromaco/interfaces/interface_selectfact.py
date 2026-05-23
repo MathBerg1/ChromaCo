@@ -15,7 +15,7 @@ WARNING  = "#f6ad55"
 DANGER   = "#f7706a"
 
 
-# ── Helpers ─────────────────────
+# ── Helpers (copied verbatim from the shared UI toolkit) ─────────────────────
 
 def _dpi_scale(win):
     try:
@@ -107,65 +107,65 @@ def _back_button_to_menu(win, label="← Back to menu"):
 
 class InterfaceSelectivity:
     def __init__(self, parent):
-        self.fenetre = tk.Toplevel(parent)
-        self.fenetre.title("Selectivity Factor")
-        self.fenetre.geometry("650x820")
-        self.fenetre.resizable(True, True)
-        self.fenetre.config(bg=BG)
-        _back_button_to_menu(self.fenetre)
-        _dpi_scale(self.fenetre)
+        self.window = tk.Toplevel(parent)
+        self.window.title("Selectivity Factor")
+        self.window.geometry("650x820")
+        self.window.resizable(True, True)
+        self.window.config(bg=BG)
+        _back_button_to_menu(self.window)
+        _dpi_scale(self.window)
 
         # ── Header ────────────────────────────────────────────────────────────
-        hdr = tk.Frame(self.fenetre, bg=BG)
-        hdr.pack(fill="x", padx=28, pady=(24, 0))
-        tk.Label(hdr, text="C H R O M A C O", font=("Segoe UI", 8, "bold"),
+        header = tk.Frame(self.window, bg=BG)
+        header.pack(fill="x", padx=28, pady=(24, 0))
+        tk.Label(header, text="C H R O M A C O", font=("Segoe UI", 8, "bold"),
                  fg=ACCENT, bg=BG).pack(anchor="w")
-        tk.Label(hdr, text="Selectivity Factor",
+        tk.Label(header, text="Selectivity Factor",
                  font=("Segoe UI", 20, "bold"), fg=TEXT_PRI, bg=BG).pack(anchor="w", pady=(2, 1))
-        tk.Label(hdr, text="α = k₂ / k₁   where   k = (tᵣ − t₀) / t₀",
+        tk.Label(header, text="α = k₂ / k₁   where   k = (tᵣ − t₀) / t₀",
                  font=("Segoe UI", 9), fg=TEXT_SEC, bg=BG).pack(anchor="w")
-        tk.Frame(self.fenetre, bg=ACCENT, height=2).pack(fill="x", padx=28, pady=(12, 0))
+        tk.Frame(self.window, bg=ACCENT, height=2).pack(fill="x", padx=28, pady=(12, 0))
 
         # ── Scrollable canvas ─────────────────────────────────────────────────
-        scroll_outer = tk.Frame(self.fenetre, bg=BG)
+        scroll_outer = tk.Frame(self.window, bg=BG)
         scroll_outer.pack(fill="both", expand=True, padx=28, pady=(14, 0))
 
-        self._canvas = tk.Canvas(scroll_outer, bg=BG, highlightthickness=0, bd=0)
-        gsb = tk.Scrollbar(scroll_outer, orient="vertical", command=self._canvas.yview)
-        self._canvas.configure(yscrollcommand=gsb.set)
-        gsb.pack(side="right", fill="y")
-        self._canvas.pack(side="left", fill="both", expand=True)
+        self.canvas = tk.Canvas(scroll_outer, bg=BG, highlightthickness=0, bd=0)
+        scrollbar = tk.Scrollbar(scroll_outer, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        self.canvas.pack(side="left", fill="both", expand=True)
 
-        sf = tk.Frame(self._canvas, bg=BG)
-        self._sf_win = self._canvas.create_window((0, 0), window=sf, anchor="nw")
-        sf.bind("<Configure>", lambda e: self._canvas.configure(
-            scrollregion=self._canvas.bbox("all")))
-        self._canvas.bind("<Configure>", lambda e: self._canvas.itemconfig(
-            self._sf_win, width=e.width))
+        inner_frame = tk.Frame(self.canvas, bg=BG)
+        self.window_id = self.canvas.create_window((0, 0), window=inner_frame, anchor="nw")
+        inner_frame.bind("<Configure>", lambda e: self.canvas.configure(
+            scrollregion=self.canvas.bbox("all")))
+        self.canvas.bind("<Configure>", lambda e: self.canvas.itemconfig(
+            self.window_id, width=e.width))
 
-        for seq, fn in (("<MouseWheel>", lambda e: self._canvas.yview_scroll(int(-e.delta / 120), "units")),
-                        ("<Button-4>",   lambda e: self._canvas.yview_scroll(-1, "units")),
-                        ("<Button-5>",   lambda e: self._canvas.yview_scroll(1,  "units"))):
-            self._canvas.bind(seq, fn)
-        self._canvas.bind("<Enter>", lambda e: self._canvas.focus_set())
+        for seq, fn in (("<MouseWheel>", lambda e: self.canvas.yview_scroll(int(-e.delta / 120), "units")),
+                        ("<Button-4>",   lambda e: self.canvas.yview_scroll(-1, "units")),
+                        ("<Button-5>",   lambda e: self.canvas.yview_scroll(1,  "units"))):
+            self.canvas.bind(seq, fn)
+        self.canvas.bind("<Enter>", lambda e: self.canvas.focus_set())
 
         PAD = {"padx": 0, "pady": 8, "fill": "x"}
 
         # ── Card 1 – Manual input ─────────────────────────────────────────────
-        wrap = tk.Frame(sf, bg=BG)
-        wrap.pack(**PAD)
-        _section_label(wrap, "Manual Input")
-        card = tk.Frame(wrap, bg=SURFACE, highlightbackground=BORDER, highlightthickness=1)
+        wrapper = tk.Frame(inner_frame, bg=BG)
+        wrapper.pack(**PAD)
+        _section_label(wrapper, "Manual Input")
+        card = tk.Frame(wrapper, bg=SURFACE, highlightbackground=BORDER, highlightthickness=1)
         card.pack(fill="x")
 
-        self.entree_tr1 = _labelled_entry_row(card, "Retention time peak 1  tᵣ₁ (min)")
-        self.entree_tr2 = _labelled_entry_row(card, "Retention time peak 2  tᵣ₂ (min)")
-        self.entree_t0  = _labelled_entry_row(card, "Dead time  t₀ (min)")
+        self.entry_tr1 = _labelled_entry_row(card, "Retention time peak 1  tᵣ₁ (min)")
+        self.entry_tr2 = _labelled_entry_row(card, "Retention time peak 2  tᵣ₂ (min)")
+        self.entry_t0  = _labelled_entry_row(card, "Dead time  t₀ (min)")
 
         tk.Frame(card, bg=BORDER, height=1).pack(fill="x", padx=14)
         btn_row = tk.Frame(card, bg=SURFACE)
         btn_row.pack(fill="x", padx=14, pady=12)
-        _action_btn(btn_row, "  Calculate", self._calculer_manuel, ACCENT).pack(side="left")
+        _action_btn(btn_row, "  Calculate", self._calculate_manual, ACCENT).pack(side="left")
 
         tk.Frame(card, bg=BORDER, height=1).pack(fill="x", padx=14)
         result_row = tk.Frame(card, bg=SURFACE)
@@ -188,10 +188,10 @@ class InterfaceSelectivity:
         self.label_manual_error.pack(fill="x")
 
         # ── Card 2 – Paste from Excel ─────────────────────────────────────────
-        wrap2 = tk.Frame(sf, bg=BG)
-        wrap2.pack(**PAD)
-        _section_label(wrap2, "Paste from Excel")
-        card2 = tk.Frame(wrap2, bg=SURFACE, highlightbackground=BORDER, highlightthickness=1)
+        wrapper2 = tk.Frame(inner_frame, bg=BG)
+        wrapper2.pack(**PAD)
+        _section_label(wrapper2, "Paste from Excel")
+        card2 = tk.Frame(wrapper2, bg=SURFACE, highlightbackground=BORDER, highlightthickness=1)
         card2.pack(fill="x")
 
         tk.Label(card2,
@@ -200,7 +200,7 @@ class InterfaceSelectivity:
                  font=("Segoe UI", 9), fg=TEXT_SEC, bg=SURFACE,
                  justify="left").pack(anchor="w", padx=14, pady=(10, 4))
 
-        self.entree_t0_paste = _labelled_entry_row(card2, "Dead time  t₀ (min)")
+        self.entry_t0_paste = _labelled_entry_row(card2, "Dead time  t₀ (min)")
 
         tk.Frame(card2, bg=BORDER, height=1).pack(fill="x", padx=14, pady=(4, 0))
 
@@ -232,23 +232,23 @@ class InterfaceSelectivity:
                         ("<Button-5>",   lambda e: self.listbox.yview_scroll(1,  "units"))):
             self.listbox.bind(seq, fn)
 
-        self._rows = []
+        self.rows = []
 
         # ── Bottom calculate button + result labels ───────────────────────────
-        _action_btn(sf, "  Calculate Selected Row", self._calculer_ligne,
+        _action_btn(inner_frame, "  Calculate Selected Row", self._calculate_row,
                     SUCCESS, large=True).pack(pady=(4, 0))
 
-        self.label_resultat = tk.Label(sf, text="", font=("Segoe UI", 11, "bold"),
-                                       fg=SUCCESS, bg=BG)
-        self.label_resultat.pack(pady=(10, 0))
+        self.label_result = tk.Label(inner_frame, text="", font=("Segoe UI", 11, "bold"),
+                                     fg=SUCCESS, bg=BG)
+        self.label_result.pack(pady=(10, 0))
 
-        self.label_detail = tk.Label(sf, text="", font=("Segoe UI", 9),
+        self.label_detail = tk.Label(inner_frame, text="", font=("Segoe UI", 9),
                                      fg=TEXT_SEC, bg=BG)
         self.label_detail.pack(pady=(2, 0))
 
-        self.label_erreur = tk.Label(sf, text="", font=("Segoe UI", 9),
-                                     fg=DANGER, bg=BG)
-        self.label_erreur.pack(pady=(2, 16))
+        self.label_error = tk.Label(inner_frame, text="", font=("Segoe UI", 9),
+                                    fg=DANGER, bg=BG)
+        self.label_error.pack(pady=(2, 16))
 
     # ── Calculation helpers ───────────────────────────────────────────────────
 
@@ -261,11 +261,11 @@ class InterfaceSelectivity:
 
     # ── Manual section ────────────────────────────────────────────────────────
 
-    def _calculer_manuel(self):
+    def _calculate_manual(self):
         try:
-            t_r1 = float(self.entree_tr1.get().replace(",", "."))
-            t_r2 = float(self.entree_tr2.get().replace(",", "."))
-            t_0  = float(self.entree_t0.get().replace(",", "."))
+            t_r1 = float(self.entry_tr1.get().replace(",", "."))
+            t_r2 = float(self.entry_tr2.get().replace(",", "."))
+            t_0  = float(self.entry_t0.get().replace(",", "."))
             alpha, k1, k2 = self._run_calculation(t_r1, t_r2, t_0)
             self.label_manual_result.config(text=f"α  =  {alpha:.6f}", fg=SUCCESS)
             self.label_manual_k.config(
@@ -279,15 +279,15 @@ class InterfaceSelectivity:
     # ── Paste section ─────────────────────────────────────────────────────────
 
     def _on_paste(self, event=None):
-        self.fenetre.after(100, self._parse_paste)
+        self.window.after(100, self._parse_paste)
 
     def _parse_paste(self):
         raw = self.text_paste.get("1.0", "end").strip()
         if not raw:
-            self.label_erreur.config(text="Nothing to parse.")
+            self.label_error.config(text="Nothing to parse.")
             return
 
-        self._rows = []
+        self.rows = []
         self.listbox.delete(0, "end")
 
         for line in raw.splitlines():
@@ -302,43 +302,43 @@ class InterfaceSelectivity:
             try:
                 t_r1 = float(parts[0].replace(",", "."))
                 t_r2 = float(parts[1].replace(",", "."))
-                self._rows.append((t_r1, t_r2))
+                self.rows.append((t_r1, t_r2))
                 self.listbox.insert(
                     "end",
                     f"  tᵣ₁ = {t_r1:>10.4f}    tᵣ₂ = {t_r2:>10.4f}")
             except ValueError:
                 continue
 
-        if not self._rows:
-            self.label_erreur.config(text="No valid rows found (need 2 columns per row).")
+        if not self.rows:
+            self.label_error.config(text="No valid rows found (need 2 columns per row).")
         else:
-            self.label_erreur.config(text=f"✔  {len(self._rows)} row(s) parsed.")
-            self.label_resultat.config(text="")
+            self.label_error.config(text=f"✔  {len(self.rows)} row(s) parsed.")
+            self.label_result.config(text="")
             self.label_detail.config(text="")
 
-    def _calculer_ligne(self):
+    def _calculate_row(self):
         selection = self.listbox.curselection()
         if not selection:
             messagebox.showwarning("No selection",
                                    "Please click a row in the list first.",
-                                   parent=self.fenetre)
+                                   parent=self.window)
             return
 
         idx = selection[0]
-        t_r1, t_r2 = self._rows[idx]
+        t_r1, t_r2 = self.rows[idx]
         try:
-            t_0 = float(self.entree_t0_paste.get().replace(",", "."))
+            t_0 = float(self.entry_t0_paste.get().replace(",", "."))
         except ValueError:
-            self.label_erreur.config(text="Please enter a valid dead time t₀.")
+            self.label_error.config(text="Please enter a valid dead time t₀.")
             return
         try:
             alpha, k1, k2 = self._run_calculation(t_r1, t_r2, t_0)
-            self.label_resultat.config(text=f"α = {alpha:.6f}")
+            self.label_result.config(text=f"α = {alpha:.6f}")
             self.label_detail.config(text=f"k₁ = {k1:.4f}   k₂ = {k2:.4f}")
-            self.label_erreur.config(text="")
+            self.label_error.config(text="")
         except Exception as exc:
-            self.label_erreur.config(text=f"Calculation error: {exc}")
-            self.label_resultat.config(text="")
+            self.label_error.config(text=f"Calculation error: {exc}")
+            self.label_result.config(text="")
             self.label_detail.config(text="")
 
 
@@ -347,6 +347,6 @@ class InterfaceSelectivity:
 if __name__ == "__main__":
     root = tk.Tk()
     root.withdraw()          # hide the dummy root
-    app = InterfaceSelectivite(root)
-    app.fenetre.protocol("WM_DELETE_WINDOW", root.destroy)
+    app = InterfaceSelectivity(root)
+    app.window.protocol("WM_DELETE_WINDOW", root.destroy)
     root.mainloop()
