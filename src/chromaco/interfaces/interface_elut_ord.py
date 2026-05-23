@@ -225,7 +225,7 @@ class InterfaceElution:
                            resizable=(False, True))
         self.win_mol = win
         _header(win, "CHROMACO", "Molecule Input",
-                "SMILES or CAS → LogP     |     SMILES → Dipole moment")
+                "Input SMILES for molecule of interest")
 
         body = tk.Frame(win, bg=BG)
         body.pack(fill="x", padx=28, pady=(18, 0))
