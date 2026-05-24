@@ -24,6 +24,15 @@ This usage example shows how to quickly leverage the package's main functionalit
 After importing the `main_func` (to be renamed by you), you simply pass in your `data` and get the `result` (this is just an example, your package might have other inputs and outputs). 
 Short and sweet, but the real power lies in the detailed documentation.
 
+These are examples of was is going to be seen on the calculator :
+
+[Example for the main interface](General.jpg)
+
+[Example for the Kovat index](Kovat.jpg)
+
+[Example all interfaces](All.jpg)
+
+
 ## 👩‍💻 Installation
 
 Create a new environment, you may also give the environment a different name. 
