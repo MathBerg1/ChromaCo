@@ -24,11 +24,7 @@ Short and sweet, but the real power lies in the detailed documentation.
 
 These are examples of was is going to be seen on the calculator :
 
-![Example for the main interface](General.jpg)
-
-![Example for the Kovat index](Kovat.jpg)
-
-![Example all interfaces](All.jpg)
+![Examples](example_interfaces_ChroamCo.png)
 
 
 ## 👩‍💻 Installation
