@@ -24,7 +24,7 @@ Short and sweet, but the real power lies in the detailed documentation.
 
 These are examples of was is going to be seen on the calculator :
 
-![Examples](example_interfaces_ChroamCo.png)
+![Examples](example_interfaces_ChromaCo.png)
 
 
 ## 👩‍💻 Installation
