@@ -38,7 +38,7 @@ BUTTONS = [
     {"label": "Number of Plates",        "sub": "Column efficiency",       "icon": "≡", "command": lambda: InterfacePlateau(root),         "accent": "#7c6af7"},
     {"label": "Resolution (Two Peaks)",  "sub": "Peak separation",         "icon": "∿", "command": lambda: InterfaceResolution(root),      "accent": "#4fd1c5"},
     {"label": "Order of Elution",        "sub": "Retention sequence",      "icon": "→", "command": lambda: InterfaceElution(root),         "accent": "#68d391"},
-    {"label": "Standard Addition",       "sub": "Spike / quantification",  "icon": "+", "command": lambda: InterfaceAjoutsDoses(root),     "accent": "#f6ad55"},
+    {"label": "Standard Addition",       "sub": "Spike / quantification",  "icon": "+", "command": lambda: StandardAdditionInterface (root),     "accent": "#f6ad55"},
     {"label": "Retention Factor",        "sub": "k′ calculation",          "icon": "k", "command": lambda: InterfaceRetentionFactor(root), "accent": "#fc8181"},
     {"label": "Compare Columns",         "sub": "Side-by-side analysis",   "icon": "⇌", "command": lambda: InterfaceCompareColumns(root),  "accent": "#b794f4"},
     {"label": "Selectivity Factor",         "sub": "Peak identification",   "icon": "α", "command": lambda: InterfaceSelectivity(root),  "accent": "#e794f4"},
