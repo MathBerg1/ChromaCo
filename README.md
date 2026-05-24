@@ -1,4 +1,4 @@
-![Project Logo](banner.png)
+![Project Logo](banner_ChromaCo.png)
 
 <h1 align="center">
 ChromaCo
