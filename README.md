@@ -1,7 +1,5 @@
 ![Project Logo](banner.png)
 
-![Coverage Status](assets/coverage-badge.svg)
-
 <h1 align="center">
 ChromaCo
 </h1>
