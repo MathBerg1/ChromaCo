@@ -103,6 +103,31 @@ def _styled_entry(parent, width=12, default=""):
     return e
 
 
+def _back_button_to_menu(win, label="← Back to menu"):
+    bar = tk.Frame(win, bg=BG)
+    bar.pack(fill="x", padx=28, pady=(8, 0))
+    btn = tk.Label(bar, text=label, font=("Segoe UI", 9),
+                   fg=TEXT_SEC, bg=BG, cursor="hand2")
+    btn.pack(side="right")
+    btn.bind("<Button-1>", lambda e: win.destroy())
+    btn.bind("<Enter>",    lambda e: btn.config(fg=TEXT_PRI))
+    btn.bind("<Leave>",    lambda e: btn.config(fg=TEXT_SEC))
+
+
+def _back_button_to_prev(win, on_back, label="← Back"):
+    def _go():
+        win.destroy()
+        on_back()
+    bar = tk.Frame(win, bg=BG)
+    bar.pack(fill="x", padx=28, pady=(8, 0))
+    btn = tk.Label(bar, text=label, font=("Segoe UI", 9),
+                   fg=TEXT_SEC, bg=BG, cursor="hand2")
+    btn.pack(side="right")
+    btn.bind("<Button-1>", lambda e: _go())
+    btn.bind("<Enter>",    lambda e: btn.config(fg=TEXT_PRI))
+    btn.bind("<Leave>",    lambda e: btn.config(fg=TEXT_SEC))
+
+
 # ── Main class ─────────────────────────────────────────────────────────────────
 
 class InterfaceElution:
@@ -118,6 +143,7 @@ class InterfaceElution:
 
     def _open_column_choice(self):
         win = _base_window(self.parent, "Order of Elution", 500, 400)
+        _back_button_to_menu(win)
         self.win_col = win
         _header(win, "CHROMACO", "Order of Elution", "Select a stationary phase")
 
@@ -180,6 +206,7 @@ class InterfaceElution:
 
     def _open_nb_compounds(self):
         win = _base_window(self.parent, "Number of Compounds", 450, 400)
+        _back_button_to_prev(win, self._open_column_choice)
         self.win_nb = win
         _header(win, "CHROMACO", "Compounds", "How many molecules to separate?")
 
@@ -223,6 +250,7 @@ class InterfaceElution:
         h = 350 + self.n_compounds * 48
         win = _base_window(self.parent, "Molecule Input", 600, h,
                            resizable=(False, True))
+        _back_button_to_prev(win, self._open_nb_compounds)
         self.win_mol = win
         _header(win, "CHROMACO", "Molecule Input",
                 "Input SMILES for molecule of interest")
@@ -232,10 +260,6 @@ class InterfaceElution:
 
         _section_label(body, "Molecule identifiers")
 
-        card = _card(body)
-        card.pack_configure(fill="x")  # already packed by _card; fix padx
-        # rebuild without auto-pack so we can control padding
-        card.pack_forget()
         card = tk.Frame(body, bg=SURFACE, highlightbackground=BORDER,
                         highlightthickness=1)
         card.pack(fill="x", pady=(4, 0))
@@ -245,7 +269,6 @@ class InterfaceElution:
             row = tk.Frame(card, bg=SURFACE)
             row.pack(fill="x", padx=14, pady=6)
 
-            # index badge
             badge = tk.Label(row, text=str(i + 1), font=("Segoe UI", 9, "bold"),
                              fg=BG, bg=ACCENT, width=2, pady=2)
             badge.pack(side="left", padx=(0, 10))
@@ -257,7 +280,6 @@ class InterfaceElution:
             if i < self.n_compounds - 1:
                 tk.Frame(card, bg=BORDER, height=1).pack(fill="x", padx=14)
 
-        # bottom padding inside card
         tk.Frame(card, bg=SURFACE, height=8).pack()
 
         btn_row = tk.Frame(win, bg=BG)
@@ -348,6 +370,7 @@ class InterfaceElution:
         h = 500 if has_warning else 400
         win = _base_window(self.parent, "Elution Order Result", 640, h,
                            resizable=(True, False))
+        _back_button_to_prev(win, self._open_molecule_input)
         _header(win, "CHROMACO", "Elution Order",
                 f"{method}  ·  {self.column_type} column")
 
@@ -356,7 +379,6 @@ class InterfaceElution:
 
         _section_label(body, "First → Last")
 
-        # Result flow card
         card = tk.Frame(body, bg=SURFACE, highlightbackground=BORDER,
                         highlightthickness=1)
         card.pack(fill="x", pady=(4, 0))
@@ -371,7 +393,6 @@ class InterfaceElution:
                 tk.Label(flow, text="  →  ", font=("Segoe UI", 12),
                          fg=ACCENT, bg=SURFACE).pack(side="left")
 
-        # Warning box
         if estimated:
             names_str = ", ".join(estimated)
             prop = "LogP" if method == "LogP" else "dipole moment"

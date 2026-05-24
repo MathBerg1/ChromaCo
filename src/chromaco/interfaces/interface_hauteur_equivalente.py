@@ -83,61 +83,71 @@ def _scrollable_listbox(parent, height=5):
     sb.config(command=lb.yview)
     return frame, lb
 
+def _back_button_to_menu(win, label="← Back to menu"):
+    bar = tk.Frame(win, bg=BG)
+    bar.pack(fill="x", padx=28, pady=(8, 0))
+    btn = tk.Label(bar, text=label, font=("Segoe UI", 9),
+                   fg=TEXT_SEC, bg=BG, cursor="hand2")
+    btn.pack(side="right")
+    btn.bind("<Button-1>", lambda e: win.destroy())
+    btn.bind("<Enter>",    lambda e: btn.config(fg=TEXT_PRI))
+    btn.bind("<Leave>",    lambda e: btn.config(fg=TEXT_SEC))
 
 class InterfaceHauteur:
     def __init__(self, parent):
-        self.fenetre = tk.Toplevel(parent)
-        self.fenetre.title("Equivalent Plate Height")
-        self.fenetre.geometry("650x780")
-        self.fenetre.resizable(True, True)
-        self.fenetre.config(bg=BG)
-        _dpi_scale(self.fenetre)
+        self.window = tk.Toplevel(parent)
+        self.window.title("Equivalent Plate Height")
+        self.window.geometry("650x780")
+        self.window.resizable(True, True)
+        self.window.config(bg=BG)
+        _back_button_to_menu(self.window)
+        _dpi_scale(self.window)
 
-        hdr = tk.Frame(self.fenetre, bg=BG)
-        hdr.pack(fill="x", padx=28, pady=(24, 0))
-        tk.Label(hdr, text="C H R O M A C O", font=("Segoe UI", 8, "bold"),
+        header = tk.Frame(self.window, bg=BG)
+        header.pack(fill="x", padx=28, pady=(24, 0))
+        tk.Label(header, text="C H R O M A C O", font=("Segoe UI", 8, "bold"),
                  fg=ACCENT, bg=BG).pack(anchor="w")
-        tk.Label(hdr, text="Equivalent Plate Height",
+        tk.Label(header, text="Equivalent Plate Height",
                  font=("Segoe UI", 20, "bold"), fg=TEXT_PRI, bg=BG).pack(anchor="w", pady=(2,1))
-        tk.Label(hdr, text="H = L / N  via retention time and peak width",
+        tk.Label(header, text="H = L / N  via retention time and peak width",
                  font=("Segoe UI", 9), fg=TEXT_SEC, bg=BG).pack(anchor="w")
-        tk.Frame(self.fenetre, bg=ACCENT, height=2).pack(fill="x", padx=28, pady=(12, 0))
+        tk.Frame(self.window, bg=ACCENT, height=2).pack(fill="x", padx=28, pady=(12, 0))
 
-        scroll_outer = tk.Frame(self.fenetre, bg=BG)
+        scroll_outer = tk.Frame(self.window, bg=BG)
         scroll_outer.pack(fill="both", expand=True, padx=28, pady=(14, 0))
 
-        self._canvas = tk.Canvas(scroll_outer, bg=BG, highlightthickness=0, bd=0)
-        gsb = tk.Scrollbar(scroll_outer, orient="vertical", command=self._canvas.yview)
-        self._canvas.configure(yscrollcommand=gsb.set)
-        gsb.pack(side="right", fill="y")
-        self._canvas.pack(side="left", fill="both", expand=True)
+        self.canvas = tk.Canvas(scroll_outer, bg=BG, highlightthickness=0, bd=0)
+        scrollbar = tk.Scrollbar(scroll_outer, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        self.canvas.pack(side="left", fill="both", expand=True)
 
-        sf = tk.Frame(self._canvas, bg=BG)
-        self._sf_win = self._canvas.create_window((0, 0), window=sf, anchor="nw")
-        sf.bind("<Configure>", lambda e: self._canvas.configure(scrollregion=self._canvas.bbox("all")))
-        self._canvas.bind("<Configure>", lambda e: self._canvas.itemconfig(self._sf_win, width=e.width))
+        inner_frame = tk.Frame(self.canvas, bg=BG)
+        self.window_id = self.canvas.create_window((0, 0), window=inner_frame, anchor="nw")
+        inner_frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+        self.canvas.bind("<Configure>", lambda e: self.canvas.itemconfig(self.window_id, width=e.width))
 
-        self._canvas.bind("<MouseWheel>", lambda e: self._canvas.yview_scroll(int(-e.delta/120), "units"))
-        self._canvas.bind("<Button-4>",   lambda e: self._canvas.yview_scroll(-1, "units"))
-        self._canvas.bind("<Button-5>",   lambda e: self._canvas.yview_scroll(1,  "units"))
-        self._canvas.bind("<Enter>", lambda e: self._canvas.focus_set())
+        self.canvas.bind("<MouseWheel>", lambda e: self.canvas.yview_scroll(int(-e.delta/120), "units"))
+        self.canvas.bind("<Button-4>",   lambda e: self.canvas.yview_scroll(-1, "units"))
+        self.canvas.bind("<Button-5>",   lambda e: self.canvas.yview_scroll(1,  "units"))
+        self.canvas.bind("<Enter>", lambda e: self.canvas.focus_set())
 
         PAD = {"padx": 0, "pady": 8, "fill": "x"}
 
-        wrap = tk.Frame(sf, bg=BG)
-        wrap.pack(**PAD)
-        _section_label(wrap, "Manual Input")
-        card = tk.Frame(wrap, bg=SURFACE, highlightbackground=BORDER, highlightthickness=1)
+        wrapper = tk.Frame(inner_frame, bg=BG)
+        wrapper.pack(**PAD)
+        _section_label(wrapper, "Manual Input")
+        card = tk.Frame(wrapper, bg=SURFACE, highlightbackground=BORDER, highlightthickness=1)
         card.pack(fill="x")
 
-        self.entree1 = _labelled_entry_row(card, "Brut retention time (min)")
-        self.entree2 = _labelled_entry_row(card, "Width of the peak base (min)")
-        self.entree3 = _labelled_entry_row(card, "Column length (m)")
+        self.entry1 = _labelled_entry_row(card, "Brut retention time (min)")
+        self.entry2 = _labelled_entry_row(card, "Width of the peak base (min)")
+        self.entry3 = _labelled_entry_row(card, "Column length (m)")
 
         tk.Frame(card, bg=BORDER, height=1).pack(fill="x", padx=14)
         btn_row = tk.Frame(card, bg=SURFACE)
         btn_row.pack(fill="x", padx=14, pady=12)
-        _action_btn(btn_row, "  Calculate", self._calculer_manuel, ACCENT).pack(side="left")
+        _action_btn(btn_row, "  Calculate", self._calculate_manual, ACCENT).pack(side="left")
 
         tk.Frame(card, bg=BORDER, height=1).pack(fill="x", padx=14)
         result_row = tk.Frame(card, bg=SURFACE)
@@ -149,10 +159,10 @@ class InterfaceHauteur:
                                            fg=DANGER, bg=SURFACE, anchor="w")
         self.label_manual_error.pack(fill="x")
 
-        wrap2 = tk.Frame(sf, bg=BG)
-        wrap2.pack(**PAD)
-        _section_label(wrap2, "Paste from Excel")
-        card2 = tk.Frame(wrap2, bg=SURFACE, highlightbackground=BORDER, highlightthickness=1)
+        wrapper2 = tk.Frame(inner_frame, bg=BG)
+        wrapper2.pack(**PAD)
+        _section_label(wrapper2, "Paste from Excel")
+        card2 = tk.Frame(wrapper2, bg=SURFACE, highlightbackground=BORDER, highlightthickness=1)
         card2.pack(fill="x")
 
         tk.Label(card2,
@@ -161,7 +171,7 @@ class InterfaceHauteur:
                  font=("Segoe UI", 9), fg=TEXT_SEC, bg=SURFACE,
                  justify="left").pack(anchor="w", padx=14, pady=(10, 4))
 
-        self.entree_col_len = _labelled_entry_row(card2, "Column length (m)")
+        self.entry_col_len = _labelled_entry_row(card2, "Column length (m)")
 
         tk.Frame(card2, bg=BORDER, height=1).pack(fill="x", padx=14, pady=(4,0))
 
@@ -192,23 +202,23 @@ class InterfaceHauteur:
         self.listbox.bind("<Button-4>",   lambda e: self.listbox.yview_scroll(-1, "units"))
         self.listbox.bind("<Button-5>",   lambda e: self.listbox.yview_scroll(1,  "units"))
 
-        self._rows = []
+        self.rows = []
 
-        _action_btn(sf, "  Calculate Selected Row", self._calculer_ligne, SUCCESS, large=True).pack(pady=(4, 0))
+        _action_btn(inner_frame, "  Calculate Selected Row", self._calculate_row, SUCCESS, large=True).pack(pady=(4, 0))
 
-        self.label_resultat = tk.Label(sf, text="", font=("Segoe UI", 11, "bold"),
-                                       fg=SUCCESS, bg=BG)
-        self.label_resultat.pack(pady=(10, 0))
+        self.label_result = tk.Label(inner_frame, text="", font=("Segoe UI", 11, "bold"),
+                                     fg=SUCCESS, bg=BG)
+        self.label_result.pack(pady=(10, 0))
 
-        self.label_erreur = tk.Label(sf, text="", font=("Segoe UI", 9),
-                                     fg=DANGER, bg=BG)
-        self.label_erreur.pack(pady=(2, 16))
+        self.label_error = tk.Label(inner_frame, text="", font=("Segoe UI", 9),
+                                    fg=DANGER, bg=BG)
+        self.label_error.pack(pady=(2, 16))
 
-    def _calculer_manuel(self):
+    def _calculate_manual(self):
         try:
-            tR  = float(self.entree1.get().replace(",", "."))
-            wb  = float(self.entree2.get().replace(",", "."))
-            L   = float(self.entree3.get().replace(",", "."))
+            tR  = float(self.entry1.get().replace(",", "."))
+            wb  = float(self.entry2.get().replace(",", "."))
+            L   = float(self.entry3.get().replace(",", "."))
             res = equivalent_high_one(L, tR, wb)
             self.label_manual_result.config(text=f"H  =  {res:.6f} m", fg=SUCCESS)
             self.label_manual_error.config(text="")
@@ -217,15 +227,15 @@ class InterfaceHauteur:
             self.label_manual_result.config(text="—", fg=TEXT_SEC)
 
     def _on_paste(self, event=None):
-        self.fenetre.after(100, self._parse_paste)
+        self.window.after(100, self._parse_paste)
 
     def _parse_paste(self):
         raw = self.text_paste.get("1.0", "end").strip()
         if not raw:
-            self.label_erreur.config(text="Nothing to parse.")
+            self.label_error.config(text="Nothing to parse.")
             return
 
-        self._rows = []
+        self.rows = []
         self.listbox.delete(0, "end")
 
         for line in raw.splitlines():
@@ -240,34 +250,34 @@ class InterfaceHauteur:
             try:
                 tR = float(parts[0].replace(",", "."))
                 wb = float(parts[1].replace(",", "."))
-                self._rows.append((tR, wb))
+                self.rows.append((tR, wb))
                 self.listbox.insert("end", f"  tR = {tR:>10.4f}    wb = {wb:>10.4f}")
             except ValueError:
                 continue
 
-        if not self._rows:
-            self.label_erreur.config(text="No valid rows found.")
+        if not self.rows:
+            self.label_error.config(text="No valid rows found.")
         else:
-            self.label_erreur.config(text=f"✔  {len(self._rows)} row(s) parsed.")
-            self.label_resultat.config(text="")
+            self.label_error.config(text=f"✔  {len(self.rows)} row(s) parsed.")
+            self.label_result.config(text="")
 
-    def _calculer_ligne(self):
+    def _calculate_row(self):
         selection = self.listbox.curselection()
         if not selection:
-            messagebox.showwarning("No selection", "Please click a row in the list first.", parent=self.fenetre)
+            messagebox.showwarning("No selection", "Please click a row in the list first.", parent=self.window)
             return
         try:
-            L = float(self.entree_col_len.get().replace(",", "."))
+            L = float(self.entry_col_len.get().replace(",", "."))
         except ValueError:
-            self.label_erreur.config(text="Please enter a valid column length.")
+            self.label_error.config(text="Please enter a valid column length.")
             return
 
         idx = selection[0]
-        tR, wb = self._rows[idx]
+        tR, wb = self.rows[idx]
         try:
             res = equivalent_high_one(L, tR, wb)
-            self.label_resultat.config(text=f"H = {res:.6f} m")
-            self.label_erreur.config(text="")
+            self.label_result.config(text=f"H = {res:.6f} m")
+            self.label_error.config(text="")
         except Exception as e:
-            self.label_erreur.config(text=f"Calculation error: {e}")
-            self.label_resultat.config(text="")
+            self.label_error.config(text=f"Calculation error: {e}")
+            self.label_result.config(text="")

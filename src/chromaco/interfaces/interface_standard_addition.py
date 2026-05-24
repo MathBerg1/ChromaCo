@@ -84,45 +84,55 @@ def _scrollable_listbox(parent, height=5):
     sb.config(command=lb.yview)
     return frame, lb
 
+def _back_button_to_menu(win, label="← Back to menu"):
+    bar = tk.Frame(win, bg=BG)
+    bar.pack(fill="x", padx=28, pady=(8, 0))
+    btn = tk.Label(bar, text=label, font=("Segoe UI", 9),
+                   fg=TEXT_SEC, bg=BG, cursor="hand2")
+    btn.pack(side="right")
+    btn.bind("<Button-1>", lambda e: win.destroy())
+    btn.bind("<Enter>",    lambda e: btn.config(fg=TEXT_PRI))
+    btn.bind("<Leave>",    lambda e: btn.config(fg=TEXT_SEC))
 
-class InterfaceAjoutsDoses:
+class StandardAdditionInterface:
     def __init__(self, parent):
 
-        self.fenetre = tk.Toplevel(parent)
-        self.fenetre.title("Standard Addition Method")
-        self.fenetre.geometry("620x780")
-        self.fenetre.resizable(True, True)
-        self.fenetre.config(bg=BG)
-        _dpi_scale(self.fenetre)
+        self.window = tk.Toplevel(parent)
+        self.window.title("Standard Addition Method")
+        self.window.geometry("620x780")
+        self.window.resizable(True, True)
+        self.window.config(bg=BG)
+        _back_button_to_menu(self.window)
+        _dpi_scale(self.window)
 
-        hdr = tk.Frame(self.fenetre, bg=BG)
-        hdr.pack(fill="x", padx=28, pady=(24, 0))
-        tk.Label(hdr, text="C H R O M A C O", font=("Segoe UI", 8, "bold"),
+        header = tk.Frame(self.window, bg=BG)
+        header.pack(fill="x", padx=28, pady=(24, 0))
+        tk.Label(header, text="C H R O M A C O", font=("Segoe UI", 8, "bold"),
                  fg=ACCENT, bg=BG).pack(anchor="w")
-        tk.Label(hdr, text="Standard Addition Method",
+        tk.Label(header, text="Standard Addition Method",
                  font=("Segoe UI", 20, "bold"), fg=TEXT_PRI, bg=BG).pack(anchor="w")
-        tk.Label(hdr, text="y = a·x + b  →  C_unknown = −b / a",
+        tk.Label(header, text="y = a·x + b  →  C_unknown = −b / a",
                  font=("Segoe UI", 9), fg=TEXT_SEC, bg=BG).pack(anchor="w")
-        tk.Frame(self.fenetre, bg=ACCENT, height=2).pack(fill="x", padx=28, pady=(12, 0))
+        tk.Frame(self.window, bg=ACCENT, height=2).pack(fill="x", padx=28, pady=(12, 0))
 
-        scroll_outer = tk.Frame(self.fenetre, bg=BG)
+        scroll_outer = tk.Frame(self.window, bg=BG)
         scroll_outer.pack(fill="both", expand=True, padx=28, pady=(14, 0))
 
-        self._canvas = tk.Canvas(scroll_outer, bg=BG, highlightthickness=0, bd=0)
-        gsb = tk.Scrollbar(scroll_outer, orient="vertical", command=self._canvas.yview)
-        self._canvas.configure(yscrollcommand=gsb.set)
+        self.canvas = tk.Canvas(scroll_outer, bg=BG, highlightthickness=0, bd=0)
+        gsb = tk.Scrollbar(scroll_outer, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=gsb.set)
         gsb.pack(side="right", fill="y")
-        self._canvas.pack(side="left", fill="both", expand=True)
+        self.canvas.pack(side="left", fill="both", expand=True)
 
-        sf = tk.Frame(self._canvas, bg=BG)
-        self._sf_win = self._canvas.create_window((0, 0), window=sf, anchor="nw")
-        sf.bind("<Configure>", lambda e: self._canvas.configure(scrollregion=self._canvas.bbox("all")))
-        self._canvas.bind("<Configure>", lambda e: self._canvas.itemconfig(self._sf_win, width=e.width))
+        sf = tk.Frame(self.canvas, bg=BG)
+        self.sf_window = self.canvas.create_window((0, 0), window=sf, anchor="nw")
+        sf.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+        self.canvas.bind("<Configure>", lambda e: self.canvas.itemconfig(self.sf_window, width=e.width))
 
-        self._canvas.bind("<MouseWheel>", lambda e: self._canvas.yview_scroll(int(-e.delta/120), "units"))
-        self._canvas.bind("<Button-4>",   lambda e: self._canvas.yview_scroll(-1, "units"))
-        self._canvas.bind("<Button-5>",   lambda e: self._canvas.yview_scroll(1,  "units"))
-        self._canvas.bind("<Enter>", lambda e: self._canvas.focus_set())
+        self.canvas.bind("<MouseWheel>", lambda e: self.canvas.yview_scroll(int(-e.delta/120), "units"))
+        self.canvas.bind("<Button-4>",   lambda e: self.canvas.yview_scroll(-1, "units"))
+        self.canvas.bind("<Button-5>",   lambda e: self.canvas.yview_scroll(1,  "units"))
+        self.canvas.bind("<Enter>", lambda e: self.canvas.focus_set())
 
         PAD = {"padx": 0, "pady": 8, "fill": "x"}
 
@@ -139,7 +149,7 @@ class InterfaceAjoutsDoses:
         btn_row = tk.Frame(card, bg=SURFACE)
         btn_row.pack(fill="x", padx=14, pady=12)
 
-        _action_btn(btn_row, "  Add Point", self._add_manual_point, WARNING).pack(side="left")
+        _action_btn(btn_row, "  Add Point", self._add_point, WARNING).pack(side="left")
         _action_btn(btn_row, "  Remove Last", self._remove_last_point, DANGER).pack(side="left", padx=6)
         _action_btn(btn_row, "  Clear All", self._clear_all, DANGER).pack(side="left")
 
@@ -193,59 +203,59 @@ class InterfaceAjoutsDoses:
         self.listbox.bind("<Button-4>",   lambda e: self.listbox.yview_scroll(-1, "units"))
         self.listbox.bind("<Button-5>",   lambda e: self.listbox.yview_scroll(1,  "units"))
 
-        self._points = []
+        self.points = []
 
         _action_btn(sf, "  Calculate Unknown Concentration", self._calculate, SUCCESS, large=True).pack(pady=(4, 0))
 
-        self.label_resultat = tk.Label(sf, text="", font=("Segoe UI", 11, "bold"),
-                                       fg=SUCCESS, bg=BG)
-        self.label_resultat.pack(pady=(10, 0))
+        self.label_result = tk.Label(sf, text="", font=("Segoe UI", 11, "bold"),
+                                     fg=SUCCESS, bg=BG)
+        self.label_result.pack(pady=(10, 0))
 
         self.label_details = tk.Label(sf, text="", font=("Segoe UI", 9),
                                       fg=TEXT_SEC, bg=BG)
         self.label_details.pack()
 
-        self.label_erreur = tk.Label(sf, text="", font=("Segoe UI", 9),
-                                     fg=DANGER, bg=BG)
-        self.label_erreur.pack(pady=(2,16))
+        self.label_error = tk.Label(sf, text="", font=("Segoe UI", 9),
+                                    fg=DANGER, bg=BG)
+        self.label_error.pack(pady=(2,16))
 
-    def _add_manual_point(self):
+    def _add_point(self):
         try:
             c = float(self.entry_conc.get().replace(",", "."))
             a = float(self.entry_area.get().replace(",", "."))
         except ValueError:
-            self.label_erreur.config(text="Please enter valid numbers.")
+            self.label_error.config(text="Please enter valid numbers.")
             return
-        self._points.append((c, a))
+        self.points.append((c, a))
         self._refresh_listbox()
         self.entry_conc.delete(0, "end")
         self.entry_area.delete(0, "end")
-        self.label_erreur.config(text="")
+        self.label_error.config(text="")
 
     def _remove_last_point(self):
-        if self._points:
-            self._points.pop()
+        if self.points:
+            self.points.pop()
             self._refresh_listbox()
 
     def _clear_all(self):
-        self._points = []
+        self.points = []
         self._refresh_listbox()
-        self.label_resultat.config(text="")
+        self.label_result.config(text="")
         self.label_details.config(text="")
-        self.label_erreur.config(text="")
+        self.label_error.config(text="")
 
     def _refresh_listbox(self):
         self.listbox.delete(0, "end")
-        for i, (c, a) in enumerate(self._points):
+        for i, (c, a) in enumerate(self.points):
             self.listbox.insert("end", f"  {i+1:>2}.   {c:>20.4f}   {a:>16.4f}")
 
     def _on_paste(self, event=None):
-        self.fenetre.after(100, self._parse_paste)
+        self.window.after(100, self._parse_paste)
 
     def _parse_paste(self):
         raw = self.text_paste.get("1.0", "end").strip()
         if not raw:
-            self.label_erreur.config(text="Nothing to parse.")
+            self.label_error.config(text="Nothing to parse.")
             return
 
         new_points = []
@@ -263,27 +273,27 @@ class InterfaceAjoutsDoses:
                 continue
 
         if not new_points:
-            self.label_erreur.config(text="No valid rows found.")
+            self.label_error.config(text="No valid rows found.")
             return
 
-        self._points = new_points
+        self.points = new_points
         self._refresh_listbox()
-        self.label_erreur.config(text=f"{len(self._points)} point(s) loaded successfully.")
+        self.label_error.config(text=f"{len(self.points)} point(s) loaded successfully.")
 
     def _calculate(self):
-        if len(self._points) < 2:
-            messagebox.showwarning("Not enough points", "Please enter at least 2 data points.", parent=self.fenetre)
+        if len(self.points) < 2:
+            messagebox.showwarning("Not enough points", "Please enter at least 2 data points.", parent=self.window)
             return
 
-        concentrations = [p[0] for p in self._points]
-        areas = [p[1] for p in self._points]
+        concentrations = [p[0] for p in self.points]
+        areas = [p[1] for p in self.points]
         unit = self.entry_unit.get().strip()
 
         try:
             result = plot_standard_addition(concentrations, areas, show_plot=False)
         except ValueError as e:
-            self.label_erreur.config(text=str(e))
-            self.label_resultat.config(text="")
+            self.label_error.config(text=str(e))
+            self.label_result.config(text="")
             self.label_details.config(text="")
             return
 
@@ -294,8 +304,8 @@ class InterfaceAjoutsDoses:
 
         sign = "+" if b >= 0 else "-"
 
-        self.label_resultat.config(text=f"Unknown concentration: {C:.6f} {unit}")
+        self.label_result.config(text=f"Unknown concentration: {C:.6f} {unit}")
         self.label_details.config(text=f"y = {a:.4f}x {sign} {abs(b):.4f}    R² = {r2:.4f}")
-        self.label_erreur.config(text="")
+        self.label_error.config(text="")
 
         plot_standard_addition(concentrations, areas, show_plot=True)

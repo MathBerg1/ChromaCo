@@ -37,8 +37,8 @@ def _styled_entry(parent, width=14):
 
 def _action_btn(parent, text, cmd, color, large=False):
     def lighten(h):
-        r, g, b = int(h[1:3],16), int(h[3:5],16), int(h[5:7],16)
-        return f"#{min(255,r+30):02x}{min(255,g+30):02x}{min(255,b+30):02x}"
+        r, g, b = int(h[1:3], 16), int(h[3:5], 16), int(h[5:7], 16)
+        return f"#{min(255, r+30):02x}{min(255, g+30):02x}{min(255, b+30):02x}"
     btn = tk.Label(parent, text=text, font=("Segoe UI", 10, "bold"),
                    fg=BG, bg=color, cursor="hand2",
                    padx=20, pady=10 if large else 7)
@@ -86,49 +86,59 @@ def _scrollable_listbox(parent, height=5):
     sb.config(command=lb.yview)
     return frame, lb
 
+def _back_button_to_menu(win, label="← Back to menu"):
+    bar = tk.Frame(win, bg=BG)
+    bar.pack(fill="x", padx=28, pady=(8, 0))
+    btn = tk.Label(bar, text=label, font=("Segoe UI", 9),
+                   fg=TEXT_SEC, bg=BG, cursor="hand2")
+    btn.pack(side="right")
+    btn.bind("<Button-1>", lambda e: win.destroy())
+    btn.bind("<Enter>",    lambda e: btn.config(fg=TEXT_PRI))
+    btn.bind("<Leave>",    lambda e: btn.config(fg=TEXT_SEC))
 
 # ───────────────────────────────────────────────────────────────────────────────
-#                           INTERFACE RESOLUTION (FIXED)
+#                           INTERFACE RESOLUTION
 # ───────────────────────────────────────────────────────────────────────────────
 
 class InterfaceResolution:
     def __init__(self, parent):
 
-        self.fenetre = tk.Toplevel(parent)
-        self.fenetre.title("Resolution Between Two Peaks")
-        self.fenetre.geometry("650x780")
-        self.fenetre.resizable(True, True)
-        self.fenetre.config(bg=BG)
-        _dpi_scale(self.fenetre)
+        self.window = tk.Toplevel(parent)
+        self.window.title("Resolution Between Two Peaks")
+        self.window.geometry("650x780")
+        self.window.resizable(True, True)
+        self.window.config(bg=BG)
+        _back_button_to_menu(self.window)
+        _dpi_scale(self.window)
 
         # Header
-        hdr = tk.Frame(self.fenetre, bg=BG)
-        hdr.pack(fill="x", padx=28, pady=(24, 0))
-        tk.Label(hdr, text="C H R O M A C O", font=("Segoe UI", 8, "bold"),
+        header = tk.Frame(self.window, bg=BG)
+        header.pack(fill="x", padx=28, pady=(24, 0))
+        tk.Label(header, text="C H R O M A C O", font=("Segoe UI", 8, "bold"),
                  fg=ACCENT, bg=BG).pack(anchor="w")
-        tk.Label(hdr, text="Resolution Between Two Peaks",
-                 font=("Segoe UI", 20, "bold"), fg=TEXT_PRI, bg=BG).pack(anchor="w", pady=(2,1))
-        tk.Label(hdr, text="Rs = 2(tR2 − tR1) / (wb1 + wb2)",
+        tk.Label(header, text="Resolution Between Two Peaks",
+                 font=("Segoe UI", 20, "bold"), fg=TEXT_PRI, bg=BG).pack(anchor="w", pady=(2, 1))
+        tk.Label(header, text="Rs = 2(tR2 − tR1) / (wb1 + wb2)",
                  font=("Segoe UI", 9), fg=TEXT_SEC, bg=BG).pack(anchor="w")
-        tk.Frame(self.fenetre, bg=ACCENT, height=2).pack(fill="x", padx=28, pady=(12, 0))
+        tk.Frame(self.window, bg=ACCENT, height=2).pack(fill="x", padx=28, pady=(12, 0))
 
         # Scrollable canvas
-        scroll_outer = tk.Frame(self.fenetre, bg=BG)
+        scroll_outer = tk.Frame(self.window, bg=BG)
         scroll_outer.pack(fill="both", expand=True, padx=28, pady=(14, 0))
 
-        self._canvas = tk.Canvas(scroll_outer, bg=BG, highlightthickness=0, bd=0)
-        gsb = tk.Scrollbar(scroll_outer, orient="vertical", command=self._canvas.yview)
-        self._canvas.configure(yscrollcommand=gsb.set)
-        gsb.pack(side="right", fill="y")
-        self._canvas.pack(side="left", fill="both", expand=True)
+        self.canvas = tk.Canvas(scroll_outer, bg=BG, highlightthickness=0, bd=0)
+        scrollbar = tk.Scrollbar(scroll_outer, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        self.canvas.pack(side="left", fill="both", expand=True)
 
-        sf = tk.Frame(self._canvas, bg=BG)
-        self._sf_win = self._canvas.create_window((0, 0), window=sf, anchor="nw")
+        inner_frame = tk.Frame(self.canvas, bg=BG)
+        self.window_id = self.canvas.create_window((0, 0), window=inner_frame, anchor="nw")
 
-        sf.bind("<Configure>", lambda e: self._canvas.configure(
-            scrollregion=self._canvas.bbox("all")))
-        self._canvas.bind("<Configure>", lambda e: self._canvas.itemconfig(
-            self._sf_win, width=e.width))
+        inner_frame.bind("<Configure>", lambda e: self.canvas.configure(
+            scrollregion=self.canvas.bbox("all")))
+        self.canvas.bind("<Configure>", lambda e: self.canvas.itemconfig(
+            self.window_id, width=e.width))
 
         # ENABLE TRACKPAD + MOUSE SCROLL
         self._enable_canvas_scroll()
@@ -136,22 +146,22 @@ class InterfaceResolution:
         PAD = {"padx": 0, "pady": 8, "fill": "x"}
 
         # Manual input section
-        wrap = tk.Frame(sf, bg=BG)
-        wrap.pack(**PAD)
-        _section_label(wrap, "Manual Input")
-        card = tk.Frame(wrap, bg=SURFACE, highlightbackground=BORDER,
+        wrapper = tk.Frame(inner_frame, bg=BG)
+        wrapper.pack(**PAD)
+        _section_label(wrapper, "Manual Input")
+        card = tk.Frame(wrapper, bg=SURFACE, highlightbackground=BORDER,
                         highlightthickness=1)
         card.pack(fill="x")
 
-        self.entree1 = _labelled_entry_row(card, "Retention time peak 1 (min)")
-        self.entree2 = _labelled_entry_row(card, "Peak width base 1 (min)")
-        self.entree3 = _labelled_entry_row(card, "Retention time peak 2 (min)")
-        self.entree4 = _labelled_entry_row(card, "Peak width base 2 (min)")
+        self.entry1 = _labelled_entry_row(card, "Retention time peak 1 (min)")
+        self.entry2 = _labelled_entry_row(card, "Peak width base 1 (min)")
+        self.entry3 = _labelled_entry_row(card, "Retention time peak 2 (min)")
+        self.entry4 = _labelled_entry_row(card, "Peak width base 2 (min)")
 
         tk.Frame(card, bg=BORDER, height=1).pack(fill="x", padx=14)
         btn_row = tk.Frame(card, bg=SURFACE)
         btn_row.pack(fill="x", padx=14, pady=12)
-        _action_btn(btn_row, "  Calculate", self._calculer_manuel,
+        _action_btn(btn_row, "  Calculate", self._calculate_manual,
                     ACCENT).pack(side="left")
 
         tk.Frame(card, bg=BORDER, height=1).pack(fill="x", padx=14)
@@ -167,10 +177,10 @@ class InterfaceResolution:
         self.label_manual_error.pack(fill="x")
 
         # Excel paste section
-        wrap2 = tk.Frame(sf, bg=BG)
-        wrap2.pack(**PAD)
-        _section_label(wrap2, "Paste from Excel")
-        card2 = tk.Frame(wrap2, bg=SURFACE, highlightbackground=BORDER,
+        wrapper2 = tk.Frame(inner_frame, bg=BG)
+        wrapper2.pack(**PAD)
+        _section_label(wrapper2, "Paste from Excel")
+        card2 = tk.Frame(wrapper2, bg=SURFACE, highlightbackground=BORDER,
                          highlightthickness=1)
         card2.pack(fill="x")
 
@@ -180,14 +190,14 @@ class InterfaceResolution:
                  font=("Segoe UI", 9), fg=TEXT_SEC, bg=SURFACE,
                  justify="left").pack(anchor="w", padx=14, pady=(10, 4))
 
-        tk.Frame(card2, bg=BORDER, height=1).pack(fill="x", padx=14, pady=(4,0))
+        tk.Frame(card2, bg=BORDER, height=1).pack(fill="x", padx=14, pady=(4, 0))
 
         tk.Label(card2, text="Paste area", font=("Segoe UI", 8),
                  fg=TEXT_SEC, bg=SURFACE).pack(anchor="w", padx=14, pady=(8, 2))
         paste_frame, self.text_paste = _scrollable_text(card2, height=5)
         paste_frame.pack(fill="x", padx=14, pady=(0, 6))
 
-        # SCROLL LOCAL (NE PAS TOUCHER)
+        # SCROLL LOCAL
         self.text_paste.bind("<MouseWheel>", lambda e: self.text_paste.yview_scroll(self._scroll_delta(e), "units"))
 
         parse_row = tk.Frame(card2, bg=SURFACE)
@@ -203,21 +213,21 @@ class InterfaceResolution:
         list_frame, self.listbox = _scrollable_listbox(card2, height=5)
         list_frame.pack(fill="x", padx=14, pady=(0, 12))
 
-        # SCROLL LOCAL (NE PAS TOUCHER)
+        # SCROLL LOCAL
         self.listbox.bind("<MouseWheel>", lambda e: self.listbox.yview_scroll(self._scroll_delta(e), "units"))
 
-        self._rows = []
+        self.rows = []
 
-        _action_btn(sf, "  Calculate Resolution",
-                    self._calculer_resolution, SUCCESS, large=True).pack(pady=(4, 0))
+        _action_btn(inner_frame, "  Calculate Resolution",
+                    self._calculate_resolution, SUCCESS, large=True).pack(pady=(4, 0))
 
-        self.label_resultat = tk.Label(sf, text="", font=("Segoe UI", 11, "bold"),
-                                       fg=SUCCESS, bg=BG)
-        self.label_resultat.pack(pady=(10, 0))
+        self.label_result = tk.Label(inner_frame, text="", font=("Segoe UI", 11, "bold"),
+                                     fg=SUCCESS, bg=BG)
+        self.label_result.pack(pady=(10, 0))
 
-        self.label_erreur = tk.Label(sf, text="", font=("Segoe UI", 9),
-                                     fg=DANGER, bg=BG)
-        self.label_erreur.pack(pady=(2, 16))
+        self.label_error = tk.Label(inner_frame, text="", font=("Segoe UI", 9),
+                                    fg=DANGER, bg=BG)
+        self.label_error.pack(pady=(2, 16))
 
 
     # ───────────────────────────────────────────────────────────────
@@ -226,20 +236,20 @@ class InterfaceResolution:
     def _enable_canvas_scroll(self):
 
         # scroll local
-        self._canvas.bind("<MouseWheel>", lambda e: self._canvas.yview_scroll(self._scroll_delta(e), "units"))
-        self._canvas.bind("<Button-4>",   lambda e: self._canvas.yview_scroll(-1, "units"))
-        self._canvas.bind("<Button-5>",   lambda e: self._canvas.yview_scroll(1,  "units"))
+        self.canvas.bind("<MouseWheel>", lambda e: self.canvas.yview_scroll(self._scroll_delta(e), "units"))
+        self.canvas.bind("<Button-4>",   lambda e: self.canvas.yview_scroll(-1, "units"))
+        self.canvas.bind("<Button-5>",   lambda e: self.canvas.yview_scroll(1,  "units"))
 
         # donner le focus au canvas
-        self._canvas.bind("<Enter>", lambda e: self._canvas.focus_set())
+        self.canvas.bind("<Enter>", lambda e: self.canvas.focus_set())
 
         # rediriger les événements trackpad du toplevel vers le canvas
         def redirect(event):
-            widget = self.fenetre.winfo_containing(event.x_root, event.y_root)
-            if widget is self._canvas:
-                self._canvas.yview_scroll(self._scroll_delta(event), "units")
+            widget = self.window.winfo_containing(event.x_root, event.y_root)
+            if widget is self.canvas:
+                self.canvas.yview_scroll(self._scroll_delta(event), "units")
 
-        self.fenetre.bind("<MouseWheel>", redirect)
+        self.window.bind("<MouseWheel>", redirect)
 
 
     def _scroll_delta(self, event):
@@ -249,12 +259,12 @@ class InterfaceResolution:
 
 
     # Manual calculation
-    def _calculer_manuel(self):
+    def _calculate_manual(self):
         try:
-            tR1 = float(self.entree1.get().replace(",", "."))
-            wb1 = float(self.entree2.get().replace(",", "."))
-            tR2 = float(self.entree3.get().replace(",", "."))
-            wb2 = float(self.entree4.get().replace(",", "."))
+            tR1 = float(self.entry1.get().replace(",", "."))
+            wb1 = float(self.entry2.get().replace(",", "."))
+            tR2 = float(self.entry3.get().replace(",", "."))
+            wb2 = float(self.entry4.get().replace(",", "."))
             res = resolution_between_two_peaks(tR1, tR2, wb1, wb2)
             self.label_manual_result.config(text=f"Resolution = {res:.4f}", fg=SUCCESS)
             self.label_manual_error.config(text="")
@@ -265,16 +275,16 @@ class InterfaceResolution:
 
     # Paste handler
     def _on_paste(self, event=None):
-        self.fenetre.after(100, self._parse_paste)
+        self.window.after(100, self._parse_paste)
 
 
     def _parse_paste(self):
         raw = self.text_paste.get("1.0", "end").strip()
         if not raw:
-            self.label_erreur.config(text="Nothing to parse.")
+            self.label_error.config(text="Nothing to parse.")
             return
 
-        self._rows = []
+        self.rows = []
         self.listbox.delete(0, "end")
 
         for line in raw.splitlines():
@@ -286,36 +296,36 @@ class InterfaceResolution:
             try:
                 tR = float(parts[0].replace(",", "."))
                 wb = float(parts[1].replace(",", "."))
-                self._rows.append((tR, wb))
+                self.rows.append((tR, wb))
                 self.listbox.insert("end", f"  tR = {tR:>10.4f}    wb = {wb:>10.4f}")
             except ValueError:
                 continue
 
-        if not self._rows:
-            self.label_erreur.config(text="No valid rows found.")
+        if not self.rows:
+            self.label_error.config(text="No valid rows found.")
         else:
-            self.label_erreur.config(text=f"{len(self._rows)} row(s) parsed.")
+            self.label_error.config(text=f"{len(self.rows)} row(s) parsed.")
 
 
     # Resolution calculation
-    def _calculer_resolution(self):
+    def _calculate_resolution(self):
         sel = self.listbox.curselection()
         if len(sel) != 2:
             messagebox.showwarning("Select 2 rows",
                                    "Please select exactly 2 rows.",
-                                   parent=self.fenetre)
+                                   parent=self.window)
             return
 
         (i1, i2) = sel
-        tR1, wb1 = self._rows[i1]
-        tR2, wb2 = self._rows[i2]
+        tR1, wb1 = self.rows[i1]
+        tR2, wb2 = self.rows[i2]
 
         try:
             res = resolution_between_two_peaks(tR1, tR2, wb1, wb2)
-            self.label_resultat.config(
+            self.label_result.config(
                 text=f"Resolution = {res:.4f}\n(Rows {i1+1} and {i2+1})",
                 fg=SUCCESS)
-            self.label_erreur.config(text="")
+            self.label_error.config(text="")
         except Exception as e:
-            self.label_erreur.config(text=f"Error: {e}")
-            self.label_resultat.config(text="")
+            self.label_error.config(text=f"Error: {e}")
+            self.label_result.config(text="")

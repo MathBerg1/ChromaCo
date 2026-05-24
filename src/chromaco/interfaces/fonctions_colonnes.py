@@ -1,16 +1,3 @@
-"""
-chromatography.py
------------------
-Chromatographic analysis utilities covering:
-  - Column efficiency (theoretical plates, HETP)
-  - Peak resolution and selectivity
-  - Dead time estimation (Kovats method)
-  - Retention factor and Kovats index
-  - Standard addition method
-  - Craig counter-current distribution simulation
-  - Column comparison
-  - Molecule database loading and elution-order prediction
-"""
 
 import csv
 import math
@@ -25,7 +12,7 @@ import numpy as np
 # Column efficiency
 # ══════════════════════════════════════════════════════════════════════════════
 
-def theorical_plates_one(brut_retention_time: float, peak_width: float) -> float:
+def theorical_plates_one(raw_retention_time: float, peak_width: float) -> float:
     """
     Calculate the number of theoretical plates (N) for a chromatography column.
 
@@ -48,15 +35,15 @@ def theorical_plates_one(brut_retention_time: float, peak_width: float) -> float
     """
     if peak_width <= 0:
         raise ValueError("Peak width must be a strictly positive number.")
-    if brut_retention_time < 0:
+    if raw_retention_time < 0:
         raise ValueError("Retention time cannot be negative.")
 
-    return 16 * (brut_retention_time / peak_width) ** 2
+    return 16 * (raw_retention_time / peak_width) ** 2
 
 
 def equivalent_high_one(
     column_length: float,
-    brut_rentention_time: float,
+    raw_rentention_time: float,
     peak_width: float,
 ) -> float:
     """
@@ -84,12 +71,12 @@ def equivalent_high_one(
     """
     if peak_width <= 0:
         raise ValueError("Peak width must be a strictly positive number.")
-    if brut_rentention_time < 0:
+    if raw_rentention_time < 0:
         raise ValueError("Retention time cannot be negative.")
     if column_length < 0:
         raise ValueError("Column length cannot be negative.")
 
-    N = theorical_plates_one(brut_rentention_time, peak_width)
+    N = theorical_plates_one(raw_rentention_time, peak_width)
     return round(column_length / N, 7)
 
 
@@ -98,8 +85,8 @@ def equivalent_high_one(
 # ══════════════════════════════════════════════════════════════════════════════
 
 def resolution_between_two_peaks(
-    brut_retention_time_1: float,
-    brut_retention_time_2: float,
+    raw_retention_time_1: float,
+    raw_retention_time_2: float,
     peak_width_1: float,
     peak_width_2: float,
 ) -> float:
@@ -130,12 +117,12 @@ def resolution_between_two_peaks(
     """
     if peak_width_1 <= 0 or peak_width_2 <= 0:
         raise ValueError("Peak widths must be strictly positive numbers.")
-    if brut_retention_time_1 <= 0 or brut_retention_time_2 <= 0:
+    if raw_retention_time_1 <= 0 or raw_retention_time_2 <= 0:
         raise ValueError("Retention time must be strictly positive numbers.")
-    if brut_retention_time_2 < brut_retention_time_1:
+    if raw_retention_time_2 < raw_retention_time_1:
         raise ValueError("The second peak must elute after the first peak (t_R2 >= t_R1).")
 
-    return (brut_retention_time_2 - brut_retention_time_1) / (0.5 * (peak_width_1 + peak_width_2))
+    return (raw_retention_time_2 - raw_retention_time_1) / (0.5 * (peak_width_1 + peak_width_2))
 
 
 def calculate_resolution_from_dict(
@@ -399,7 +386,7 @@ def calculate_net_retention_times(
         t_net = t_brut - t_dead
         if t_net < 0:
             print(
-                f"Warning: Brut time {t_brut:.4f} is less than the calculated "
+                f"Warning: Raw time {t_brut:.4f} is less than the calculated "
                 f"dead time ({t_dead:.4f})."
             )
         net_times.append(t_net)
@@ -596,182 +583,6 @@ def plot_standard_addition(
     plt.show()
 
     return {"a": a, "b": b, "r2": r2, "C_unknown": C_unknown}
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# Craig counter-current distribution
-# ══════════════════════════════════════════════════════════════════════════════
-
-def craig_battery_simulation(
-    n_tubes: int,
-    n_steps: int,
-    k_values: dict,
-    initial_load: dict = None,
-    visualize_step_by_step: bool = False,
-    visual_interval: int = 5,
-) -> dict:
-    """
-    Simulate the Craig Counter-Current Distribution (CCD) model.
-
-    In the Craig CCD model, a series of tubes each contain two immiscible
-    phases (stationary and mobile). At each transfer step, the mobile phase
-    of every tube is moved one position forward, and the solutes re-equilibrate
-    between the two phases according to their distribution coefficients K.
-
-    Equilibrium fractions at each step::
-
-        p = 1 / (1 + K)     # fraction in mobile phase
-        q = K / (1 + K)     # fraction in stationary phase
-
-    After *r* transfer steps, the mass of a solute in tube *n* follows a
-    binomial distribution B(r, n, p), which approaches a Gaussian for large r.
-    Compounds with different K values therefore separate into distinct bands.
-
-    Parameters
-    ----------
-    n_tubes : int
-        Number of tubes, indexed 0 to n_tubes - 1.
-        Must be a strictly positive integer.
-    n_steps : int
-        Number of transfer steps to simulate.
-        Must be a strictly positive integer and satisfy n_steps <= n_tubes.
-    k_values : dict[str, float]
-        Mapping of compound name to its distribution coefficient K,
-        defined as K = C_stationary / C_mobile.
-        All K values must be strictly positive.
-    initial_load : dict[str, float] or None, optional
-        Mapping of compound name to initial amount loaded into tube 0.
-        All amounts must be strictly positive.
-        Defaults to 1.0 for each compound in k_values.
-    visualize_step_by_step : bool, optional
-        If True, prints a progress summary to the console at regular intervals.
-        Default is False.
-    visual_interval : int, optional
-        Print a summary every this many steps. Only used when
-        visualize_step_by_step is True. Default is 5.
-
-    Returns
-    -------
-    dict[str, numpy.ndarray]
-        Mapping of compound name to a 2-D array of shape (n_steps, n_tubes)
-        containing the total mass in each tube at each step.
-
-    Raises
-    ------
-    ValueError
-        If n_tubes is not a strictly positive integer.
-    ValueError
-        If n_steps is not a strictly positive integer.
-    ValueError
-        If n_steps exceeds n_tubes (solute would be pushed out of the battery).
-    ValueError
-        If k_values is empty.
-    ValueError
-        If any K value is not strictly positive.
-    ValueError
-        If initial_load keys do not match k_values keys.
-    ValueError
-        If any initial load amount is not strictly positive.
-    ValueError
-        If visual_interval is not a strictly positive integer.
-    """
-    if not isinstance(n_tubes, int) or n_tubes <= 0:
-        raise ValueError("n_tubes must be a strictly positive integer.")
-    if not isinstance(n_steps, int) or n_steps <= 0:
-        raise ValueError("n_steps must be a strictly positive integer.")
-    if n_steps > n_tubes:
-        raise ValueError(
-            f"n_steps ({n_steps}) cannot exceed n_tubes ({n_tubes}): "
-            "the solute front would be pushed beyond the last tube."
-        )
-    if not k_values:
-        raise ValueError("k_values must not be empty.")
-    for name, K in k_values.items():
-        if not isinstance(K, (int, float)) or K <= 0:
-            raise ValueError(
-                f"Distribution coefficient for '{name}' must be a strictly positive number; "
-                f"got {K!r}."
-            )
-
-    if initial_load is None:
-        initial_load = {name: 1.0 for name in k_values}
-
-    if set(initial_load.keys()) != set(k_values.keys()):
-        raise ValueError("Keys in k_values and initial_load must match.")
-
-    for name, amount in initial_load.items():
-        if not isinstance(amount, (int, float)) or amount <= 0:
-            raise ValueError(
-                f"Initial load for '{name}' must be a strictly positive number; "
-                f"got {amount!r}."
-            )
-
-    if not isinstance(visual_interval, int) or visual_interval <= 0:
-        raise ValueError("visual_interval must be a strictly positive integer.")
-
-    history = {name: np.zeros((n_steps, n_tubes)) for name in k_values}
-    current_state = {name: np.zeros(n_tubes) for name in k_values}
-
-    for name, amount in initial_load.items():
-        current_state[name][0] = amount
-        history[name][0, :] = current_state[name].copy()
-
-    if visualize_step_by_step:
-        print(f"\nStarting Simulation: {n_tubes} tubes, {n_steps} steps.")
-        print(f"Visualization interval: Every {visual_interval} steps.\n")
-
-        display_tubes = min(n_tubes, 20)
-        header = f"{'Step':>4} | " + " | ".join([f"T{i:>2}" for i in range(display_tubes)])
-        if n_tubes > 20:
-            header += " | ..."
-        print(header)
-        print("-" * len(header))
-
-    for step in range(1, n_steps):
-        for name, K in k_values.items():
-            q_tot = current_state[name]
-
-            p = 1.0 / (1.0 + K)
-            q = K / (1.0 + K)
-
-            c_mobile     = q_tot * p
-            c_stationary = q_tot * q
-
-            new_mobile = np.zeros(n_tubes)
-            if n_tubes > 1:
-                new_mobile[1:] = c_mobile[:-1]
-
-            current_state[name] = new_mobile + c_stationary
-            history[name][step, :] = current_state[name].copy()
-
-        if visualize_step_by_step and (
-            step % visual_interval == 0 or step == n_steps - 1
-        ):
-            summary = f"{step:>4} | "
-            for name in k_values.keys():
-                profile = history[name][step, :]
-                max_pos = np.argmax(profile)
-                max_val = np.max(profile)
-                summary += f"{name.split()[0]}:{max_pos}({max_val:.2f}) | "
-            print(summary)
-
-            if step % (visual_interval * 2) == 0:
-                first_compound = list(k_values.keys())[0]
-                profile = history[first_compound][step, :]
-                max_val = np.max(profile)
-                if max_val > 0:
-                    line = ""
-                    for i in range(min(n_tubes, 50)):
-                        if profile[i] > max_val * 0.1:
-                            line += "*"
-                        elif profile[i] > 0:
-                            line += "."
-                        else:
-                            line += " "
-                    print(f"       Profile ({first_compound.split()[0]}): [{line}]")
-
-    print("\nSimulation Complete.")
-    return history
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1199,42 +1010,3 @@ def sort_by_dipole(molecules: list[str], db: dict, column_type: str) -> list[str
         return (dipole * (-1 if reverse else 1), mol_len)
 
     return sorted(molecules, key=sort_key)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# Entry point
-# ══════════════════════════════════════════════════════════════════════════════
-
-if __name__ == "__main__":
-    def calculate_dead_time_kovats(retention_times: dict[int, float]) -> float:
-        sorted_indices = sorted(retention_times.keys())
-        if len(sorted_indices) < 3:
-            return 0.0
-        return 0.5
-
-    def calculate_net_retention_times(
-        all_retention_times: list[float],
-        alkane_data: dict[int, float],
-    ) -> list[float]:
-        t_dead = 0.5
-        return [t - t_dead for t in all_retention_times]
-
-    alkane_refs  = {10: 10.0, 11: 12.0, 12: 15.0}
-    all_times    = [10.0, 10.8, 12.0, 15.0]
-    unknown_time = 10.8
-    n_before     = 10
-    n_after      = 11
-
-    try:
-        index = calculate_kovats_index(
-            gross_retention_unknown=unknown_time,
-            all_gross_times=all_times,
-            alkane_data=alkane_refs,
-            n_carbon_before=n_before,
-            n_carbon_after=n_after,
-        )
-        print(f"Composé à tR={unknown_time} min")
-        print(f"Encadré par C{n_before} et C{n_after}")
-        print(f"Indice de Kovats calculé : {index:.1f}")
-    except ValueError as e:
-        print(f"Erreur : {e}")
